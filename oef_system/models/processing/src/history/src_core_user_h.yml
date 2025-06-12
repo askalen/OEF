@@ -1,0 +1,27 @@
+version: 2
+models:
+  - name: src_core_user_h
+
+sources:
+  - name: core
+    database: datalake
+    tables:
+    - name: user_j
+      _valid_to: '2022-01-01'
+      meta:
+        _source_type: journal
+        _valid_from: '2020-01-01'
+        _valid_to: '2022-01-01'
+      columns:
+        - name: user_id
+          _purpose: pk
+        - name: last_updated
+          _purpose: data_time
+          _transformation: last_updated::TIMESTAMP
+        - name: process_date_time
+          _purpose: ingestion_time
+        - name: field1
+        - name: field2
+        - name: field3
+          _exclude: true
+        - name: field4

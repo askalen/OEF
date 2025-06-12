@@ -1,0 +1,74 @@
+import threading
+from dbt.adapters.snowflake import SnowflakeAdapter, SnowflakeConnectionManager
+from dbt.context.providers import generate_runtime_macro_context
+
+# Thread-local storage for persistent variables
+_thread_storage = threading.local()
+
+def get_persistent_storage():
+    """Get thread-local persistent variable storage"""
+    if not hasattr(_thread_storage, 'vars'):
+        _thread_storage.vars = {}
+    return _thread_storage.vars
+
+def clear_persistent_storage():
+    """Clear persistent variables (called at model start)"""
+    if hasattr(_thread_storage, 'vars'):
+        _thread_storage.vars.clear()
+
+def enhanced_macro_context(macro, config, manifest, package_name=None):
+    """Enhanced macro context with persistent variables"""
+    # Get standard dbt context
+    context = generate_runtime_macro_context(macro, config, manifest, package_name)
+    
+    # Get persistent storage for this thread
+    storage = get_persistent_storage()
+    
+    # Add persistent variable functions
+    def set_var(key, value):
+        """Set a persistent variable that survives across macro calls"""
+        storage[key] = value
+        return ""  # Return empty string for Jinja
+    
+    def get_var(key, default=None):
+        """Get a persistent variable, with optional default"""
+        return storage.get(key, default)
+    
+    def clear_vars():
+        """Clear all persistent variables"""
+        storage.clear()
+        return ""
+    
+    def list_vars():
+        """List all persistent variable keys (for debugging)"""
+        return list(storage.keys())
+    
+    # Add functions to context
+    context['set_var'] = set_var
+    context['get_var'] = get_var
+    context['clear_vars'] = clear_vars
+    context['list_vars'] = list_vars
+    
+    # Add direct access to all persistent variables
+    context.update(storage)
+    
+    return context
+
+class EnhancedSnowflakeConnectionManager(SnowflakeConnectionManager):
+    TYPE = 'enhanced_snowflake'
+
+class EnhancedSnowflakeAdapter(SnowflakeAdapter):
+    """Snowflake adapter with persistent variable support"""
+    
+    TYPE = 'enhanced_snowflake'
+    ConnectionManager = EnhancedSnowflakeConnectionManager
+    
+    def __init__(self, config, mp_context):
+        super().__init__(config, mp_context)
+        # Use our enhanced macro context generator
+        self.set_macro_context_generator(enhanced_macro_context)
+    
+    def pre_model_hook(self, config):
+        """Clear persistent variables at start of each model"""
+        clear_persistent_storage()
+        return super().pre_model_hook(config)

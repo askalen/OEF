@@ -1,0 +1,48 @@
+name: 'oef_system'
+version: '1.0.0'
+
+profile: 'oef_system'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+
+models:
+  oef_system:
+    processing:
+      +database: processing_db
+      +materialized: table
+      meta:
+        +schema: meta
+      src:
+        +schema: src
+        event:
+          +_table_structure: event
+          +cluster_by: ['date(event_time)']
+          +incremental_strategy: insert
+        history:
+          +_table_structure: history
+          +cluster_by: ['date(effective_to)']
+          +incremental_predicates: 
+            - "date(DBT_INTERNAL_DEST.effective_to) = date('9999-12-31')"
+          +incremental_strategy: merge
+      vin:
+        +schema: vin
+      vlt:
+        +schema: vlt
+      ain:
+        +schema: ain
+      ana:
+        +schema: ana
+    reporting:
+      +database: reporting_db
+      exampledept:
+        +schema: exampledept
+      exampleexport:
+        +schema: exampleexport
