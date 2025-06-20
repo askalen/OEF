@@ -7,9 +7,9 @@ sources:
     database: datalake
     tables:
     - name: user_j
-      _valid_to: '2022-01-01'
       meta:
-        _source_type: journal
+        _filter: validity = 'VALID'
+        _type: journal
         _valid_from: '2020-01-01'
         _valid_to: '2022-01-01'
       columns:
@@ -19,7 +19,7 @@ sources:
           _purpose: data_time
           _transformation: last_updated::TIMESTAMP
         - name: process_date_time
-          _purpose: ingestion_time
+          _purpose: process_time
         - name: field1
         - name: field2
         - name: field3
