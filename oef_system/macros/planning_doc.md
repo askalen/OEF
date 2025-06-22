@@ -17,8 +17,7 @@
 
 ## Set Macros
 - **set_model_meta_lock()** - Sets lock_id in meta.model table for concurrency control
-- **set_model_meta_begin()** - Creates meta.model entry in prehook
-- **set_model_meta_end()** - Finalizes meta.model entry in posthook
+- **set_model_meta()** - Finalizes meta.model entry in posthook
 - **set_run_meta_begin()** - Creates run entry in meta.run table
 - **set_run_meta_end()** - Finalizes run entry in meta.run table
 
