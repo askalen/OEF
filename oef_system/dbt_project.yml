@@ -15,8 +15,8 @@ clean-targets:
 
 models:
   oef_system:
-    +pre-hook: "{{pre_hook()}}"
-    +post-hook: "{{post_hook()}}"
+    +pre-hook: "{{process_pre_hook()}}"
+    +post-hook: "{{process_post_hook()}}"
     processing:
       +database: processing_db
       +materialized: table
@@ -29,6 +29,7 @@ models:
           +cluster_by: ['date(event_time)']
           +incremental_strategy: insert
         history:
+          +_rollback_days: 0
           +_table_structure: history
           +cluster_by: ['date(effective_to)']
           +incremental_predicates: 
