@@ -15,8 +15,8 @@ clean-targets:
 
 models:
   oef_system:
-    +pre-hook: "{{process_pre_hook()}}"
-    +post-hook: "{{process_post_hook()}}"
+    +pre-hook: "{{process_prehook()}}"
+    +post-hook: "{{process_posthook()}}"
     processing:
       +database: processing_db
       +materialized: table

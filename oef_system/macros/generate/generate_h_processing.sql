@@ -1,4 +1,4 @@
-{% macro generate_h_processing_sql(source, target, pk_fields, compare_fields, dest_columns) -%}
+{% macro generate_h_processing(source, target, pk_fields, compare_fields, dest_columns) -%}
   WITH new_data AS (
     SELECT * FROM {{ source }}
   ),

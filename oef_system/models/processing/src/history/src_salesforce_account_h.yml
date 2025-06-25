@@ -1,0 +1,28 @@
+version: 2
+
+sources:
+  - name: salesforce
+    database: test_datalake
+    schema: salesforce
+    tables:
+    - name: account
+      meta:
+        _type: journal
+        _valid_from: '2020-01-01'
+        _valid_to: '2022-01-01'
+      columns:
+        - name: id
+          _purpose: pk
+        - name: last_modified_date
+          _purpose: data_time
+          _transformation: last_modified_date::TIMESTAMP
+        - name: _ingestion_timestamp
+          _purpose: process_time
+          _transformation: _ingestion_timestamp::TIMESTAMP
+        - name: name
+        - name: parent_id
+        - name: owner_id
+        - name: status
+        - name: created_date
+        - name: _triggering_event_id
+        - name: _triggering_event_type

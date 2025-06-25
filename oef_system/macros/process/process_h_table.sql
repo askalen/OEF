@@ -14,7 +14,7 @@
     {%- endfor -%}
     
     {# Return the processing query as a subquery #}
-    {{ return("(" ~ generate_h_processing_sql(source, target, pk_fields, compare_fields, dest_columns) ~ ")") }}
+    {{ return("(" ~ generate_h_processing(source, target, pk_fields, compare_fields, dest_columns) ~ ")") }}
     
   {%- endif -%}
 {%- endmacro %}
