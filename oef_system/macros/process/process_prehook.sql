@@ -28,12 +28,43 @@
   {# ========================================
      STEP 5: CHECK PROCESSING CONDITIONS
      ======================================== #}
-  {# Check if lock was acquired #}
+  {# Check if lock was acquired or if existing lock is stale #}
   {%- set has_lock = model_meta.current_state.lock_id == invocation_id -%}
+  {%- set lock_is_stale = false -%}
+  {%- set timeout_minutes = var('lock_timeout_minutes', 30) -%}
+
+  {%- if not has_lock and model_meta.current_state.lock_id is not none -%}
+    {# Check if the lock is stale #}
+    {%- set check_stale_query %}
+      SELECT locked_at < DATEADD('minute', -{{ timeout_minutes }}, CURRENT_TIMESTAMP()) as is_stale
+      FROM meta.model
+      WHERE model_name = '{{ this.name }}'
+        AND locked_run_id IS NOT NULL
+    {%- endset %}
+    
+    {%- set stale_results = run_query(check_stale_query) -%}
+    {%- if stale_results and stale_results.rows|length > 0 -%}
+      {%- set lock_is_stale = stale_results.rows[0][0] -%}
+    {%- endif -%}
+    
+    {%- if lock_is_stale -%}
+      {{ log("  Found stale lock, clearing and retrying...", info=true) }}
+      {{ operation_clear_lock(force=true) }}
+      {{ set_model_meta_lock() }}
+      {# Re-get metadata after clearing stale lock #}
+      {%- set model_meta = get_model_meta() -%}
+      {%- set has_lock = model_meta.current_state.lock_id == invocation_id -%}
+    {%- endif -%}
+  {%- endif -%}
+
   {%- if not has_lock -%}
     {{ log("  Processing lock active, skipping table", info=true) }}
-    {{ return("SET (oef_should_process, oef_delta_from, oef_delta_to, oef_data_min, oef_backfilling) = " ~
-              "(FALSE, NULL, NULL, NULL, FALSE);") }}
+    {%- do var('oef_should_process', false) -%}
+    {%- do var('oef_delta_from', none) -%}
+    {%- do var('oef_delta_to', none) -%}
+    {%- do var('oef_data_min', none) -%}
+    {%- do var('oef_backfilling', false) -%}
+    {{ return('') }}
   {%- endif -%}
   
   {# ========================================
@@ -96,8 +127,12 @@
       
       {%- if not min_upstream_time -%}
         {{ log("  No upstream tables have progressed. Skipping.", info=true) }}
-        {{ return("SET (oef_should_process, oef_delta_from, oef_delta_to, oef_data_min, oef_backfilling) = " ~
-                  "(FALSE, NULL, NULL, NULL, FALSE);") }}
+        {%- do var('oef_should_process', false) -%}
+        {%- do var('oef_delta_from', none) -%}
+        {%- do var('oef_delta_to', none) -%}
+        {%- do var('oef_data_min', none) -%}
+        {%- do var('oef_backfilling', false) -%}
+        {{ return('') }}
       {%- endif -%}
       
       {# Apply delta_limit if configured #}
@@ -117,16 +152,24 @@
       {%- endif -%}
     {%- else -%}
       {{ log("  No upstream dependencies found. Skipping.", info=true) }}
-      {{ return("SET (oef_should_process, oef_delta_from, oef_delta_to, oef_data_min, oef_backfilling) = " ~
-                "(FALSE, NULL, NULL, NULL, FALSE);") }}
+      {%- do var('oef_should_process', false) -%}
+      {%- do var('oef_delta_from', none) -%}
+      {%- do var('oef_delta_to', none) -%}
+      {%- do var('oef_data_min', none) -%}
+      {%- do var('oef_backfilling', false) -%}
+      {{ return('') }}
     {%- endif -%}
   {%- endif -%}
   
   {# Check if delta window is valid #}
   {%- if delta_to <= delta_from -%}
     {{ log("  Delta window is empty. Nothing to process.", info=true) }}
-    {{ return("SET (oef_should_process, oef_delta_from, oef_delta_to, oef_data_min, oef_backfilling) = " ~
-              "(FALSE, '" ~ delta_from ~ "', '" ~ delta_to ~ "', NULL, FALSE);") }}
+    {%- do var('oef_should_process', false) -%}
+    {%- do var('oef_delta_from', delta_from) -%}
+    {%- do var('oef_delta_to', delta_to) -%}
+    {%- do var('oef_data_min', none) -%}
+    {%- do var('oef_backfilling', false) -%}
+    {{ return('') }}
   {%- endif -%}
   
   {# Calculate data_min #}
@@ -163,10 +206,14 @@
   {%- endif -%}
   
   {# ========================================
-     STEP 9: RETURN SET STATEMENT
+     STEP 9: SET VARIABLES FOR MODEL
      ======================================== #}
-  {{ return("SET (oef_should_process, oef_delta_from, oef_delta_to, oef_data_min, oef_backfilling) = " ~
-            "(TRUE, '" ~ delta_from ~ "', '" ~ delta_to ~ "', '" ~ data_min ~ "', " ~ is_backfilling ~ ");") }}
+  {%- do var('oef_should_process', true) -%}
+  {%- do var('oef_delta_from', delta_from) -%}
+  {%- do var('oef_delta_to', delta_to) -%}
+  {%- do var('oef_data_min', data_min) -%}
+  {%- do var('oef_backfilling', is_backfilling) -%}
+  {{ return('') }}
 
 {%- endif -%}
 {% endmacro %}

@@ -13,6 +13,9 @@ snapshot-paths: ["snapshots"]
 clean-targets:
   - "target"
 
+vars:
+  lock_timeout_minutes: 3
+
 models:
   oef_system:
     +pre-hook: "{{process_prehook()}}"

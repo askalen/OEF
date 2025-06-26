@@ -6,6 +6,7 @@
 {%- set model_node = graph.nodes[model_key] -%}
 
 {%- if not model_node -%}
+  {{ operation_clear_lock(force=true) }}
   {{- exceptions.raise_compiler_error("Model node not found in graph: " ~ model_key) -}}
 {%- endif -%}
 
@@ -60,15 +61,40 @@ WHERE model_name = '{{ this.name }}'
 {%- endif %}
 {%- endset -%}
 
-{#- Execute query -#}
-{%- call statement('get_model_meta', fetch_result=true) -%}
-  {{ meta_query }}
-{%- endcall -%}
+{#- Execute query using run_query -#}
+{%- set results = run_query(meta_query) -%}
 
-{%- set result_rows = load_result('get_model_meta').rows -%}
+{%- if not results -%}
+  {{ operation_clear_lock(force=true) }}
+  {{- exceptions.raise_compiler_error("Failed to retrieve model metadata for: " ~ this.name) -}}
+{%- endif -%}
+
+{%- set result_rows = results.rows -%}
 
 {%- if result_rows|length == 0 -%}
-  {{- exceptions.raise_compiler_error("Failed to retrieve model metadata for: " ~ this.name) -}}
+  {# First run scenario - dont clear lock, this is expected #}
+  {%- set result = {
+    'model_configs': model_configs,
+    'dependencies': {
+      'ref_models': ref_models,
+      'source_models': source_models,
+      'is_src_table': is_src_table
+    },
+    'current_state': {
+      'lock_id': none,
+      'is_first_run': true, 
+      'last_effective_time': none,
+      'last_data_time': none,
+      'last_process_time': none
+    },
+    'upstream_states': {
+      'table_names': [],
+      'effective_times': [],
+      'data_times': [],
+      'is_slow_changing': []
+    }
+  } -%}
+  {{ return(result) }}
 {%- endif -%}
 
 {%- set row = result_rows[0] -%}

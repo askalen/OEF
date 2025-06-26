@@ -32,6 +32,7 @@
   {%- set table_schema = table_parts[0] -%}
   {%- set table_name = table_parts[1] -%}
 {%- else -%}
+  {{ operation_clear_lock(force=true) }}
   {{- exceptions.raise_compiler_error("Invalid table reference format: " ~ table_ref) -}}
 {%- endif -%}
 
@@ -85,42 +86,38 @@ FROM field_array fa
 CROSS JOIN time_ranges tr
 {%- endset -%}
 
-{#- Execute query with error handling -#}
+{#- Execute query with error handling using run_query -#}
 {%- set result = none -%}
 {%- set query_failed = false -%}
 
-{%- call statement('get_table_meta', fetch_result=true) -%}
-  {{ meta_query }}
-{%- endcall -%}
+{%- set results = run_query(meta_query) -%}
 
-{%- if load_result('get_table_meta') -%}
-  {%- set result_rows = load_result('get_table_meta').rows -%}
-  {%- if result_rows|length > 0 -%}
-    {%- set row = result_rows[0] -%}
-    
-    {#- Check for NULL time values -#}
-    {%- if row[3] is none or row[4] is none -%}
-      {{- exceptions.raise_compiler_error("Table " ~ table_ref ~ " exists but " ~ data_time_field ~ " contains NULL values") -}}
-    {%- endif -%}
-    
-    {%- if is_source and (row[5] is none or row[6] is none) -%}
-      {{- exceptions.raise_compiler_error("Source table " ~ table_ref ~ " exists but " ~ process_time_field ~ " contains NULL values") -}}
-    {%- elif not is_source and (row[5] is none or row[6] is none) -%}
-      {{- exceptions.raise_compiler_error("Model table " ~ table_ref ~ " exists but meta_processed_at contains NULL values") -}}
-    {%- endif -%}
-    
-    {%- set result = {
-      'exists': row[0],
-      'table_name': row[1],
-      'fields': row[2],
-      'min_data_time': row[3],
-      'max_data_time': row[4],
-      'min_process_time': row[5],
-      'max_process_time': row[6]
-    } -%}
-  {%- else -%}
-    {%- set query_failed = true -%}
+{%- if results and results.rows|length > 0 -%}
+  {%- set row = results.rows[0] -%}
+  
+  {#- Check for NULL time values -#}
+  {%- if row[3] is none or row[4] is none -%}
+    {{ operation_clear_lock(force=true) }}
+    {{- exceptions.raise_compiler_error("Table " ~ table_ref ~ " exists but " ~ data_time_field ~ " contains NULL values") -}}
   {%- endif -%}
+  
+  {%- if is_source and (row[5] is none or row[6] is none) -%}
+    {{ operation_clear_lock(force=true) }}
+    {{- exceptions.raise_compiler_error("Source table " ~ table_ref ~ " exists but " ~ process_time_field ~ " contains NULL values") -}}
+  {%- elif not is_source and (row[5] is none or row[6] is none) -%}
+    {{ operation_clear_lock(force=true) }}
+    {{- exceptions.raise_compiler_error("Model table " ~ table_ref ~ " exists but meta_processed_at contains NULL values") -}}
+  {%- endif -%}
+  
+  {%- set result = {
+    'exists': row[0],
+    'table_name': row[1],
+    'fields': row[2],
+    'min_data_time': row[3],
+    'max_data_time': row[4],
+    'min_process_time': row[5],
+    'max_process_time': row[6]
+  } -%}
 {%- else -%}
   {%- set query_failed = true -%}
 {%- endif -%}
