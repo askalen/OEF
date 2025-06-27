@@ -59,12 +59,7 @@
 
   {%- if not has_lock -%}
     {{ log("  Processing lock active, skipping table", info=true) }}
-    {%- do var('oef_should_process', false) -%}
-    {%- do var('oef_delta_from', none) -%}
-    {%- do var('oef_delta_to', none) -%}
-    {%- do var('oef_data_min', none) -%}
-    {%- do var('oef_backfilling', false) -%}
-    {{ return('') }}
+    {{ return("SET oef_should_process = FALSE;") }}
   {%- endif -%}
   
   {# ========================================
@@ -99,7 +94,10 @@
     {# SRC tables: use delta_limit or max future date #}
     {%- set delta_limit = model_configs.configs._delta_limit -%}
     {%- if delta_limit -%}
-      {%- set delta_to = "DATEADD('day', " ~ delta_limit ~ ", '" ~ delta_from ~ "'::timestamp)" -%}
+      {# Evaluate the DATEADD expression #}
+      {%- set delta_to_query = "SELECT DATEADD('day', " ~ delta_limit ~ ", '" ~ delta_from ~ "'::timestamp)::varchar" -%}
+      {%- set delta_to_result = run_query(delta_to_query) -%}
+      {%- set delta_to = delta_to_result.rows[0][0] -%}
     {%- else -%}
       {%- set delta_to = '9999-12-31' -%}
     {%- endif -%}
@@ -127,19 +125,20 @@
       
       {%- if not min_upstream_time -%}
         {{ log("  No upstream tables have progressed. Skipping.", info=true) }}
-        {%- do var('oef_should_process', false) -%}
-        {%- do var('oef_delta_from', none) -%}
-        {%- do var('oef_delta_to', none) -%}
-        {%- do var('oef_data_min', none) -%}
-        {%- do var('oef_backfilling', false) -%}
-        {{ return('') }}
+        {{ return("SET oef_should_process = FALSE;") }}
       {%- endif -%}
       
       {# Apply delta_limit if configured #}
       {%- set delta_limit = model_configs.configs._delta_limit -%}
       {%- if delta_limit -%}
-        {%- set limited_delta_to = "DATEADD('day', " ~ delta_limit ~ ", '" ~ delta_from ~ "'::timestamp)" -%}
-        {%- if limited_delta_to < min_upstream_time -%}
+        {# Evaluate the DATEADD expression #}
+        {%- set limited_delta_to_query = "SELECT DATEADD('day', " ~ delta_limit ~ ", '" ~ delta_from ~ "'::timestamp)::varchar" -%}
+        {%- set limited_delta_to_result = run_query(limited_delta_to_query) -%}
+        {%- set limited_delta_to = limited_delta_to_result.rows[0][0] -%}
+        
+        {%- set compare_query = "SELECT '" ~ limited_delta_to ~ "'::timestamp < '" ~ min_upstream_time ~ "'::timestamp" -%}
+        {%- set compare_result = run_query(compare_query) -%}
+        {%- if compare_result.rows[0][0] -%}
           {%- set delta_to = limited_delta_to -%}
           {%- set is_backfilling = true -%}
         {%- else -%}
@@ -152,24 +151,16 @@
       {%- endif -%}
     {%- else -%}
       {{ log("  No upstream dependencies found. Skipping.", info=true) }}
-      {%- do var('oef_should_process', false) -%}
-      {%- do var('oef_delta_from', none) -%}
-      {%- do var('oef_delta_to', none) -%}
-      {%- do var('oef_data_min', none) -%}
-      {%- do var('oef_backfilling', false) -%}
-      {{ return('') }}
+      {{ return("SET oef_should_process = FALSE;") }}
     {%- endif -%}
   {%- endif -%}
   
   {# Check if delta window is valid #}
-  {%- if delta_to <= delta_from -%}
+  {%- set window_check_query = "SELECT '" ~ delta_to ~ "'::timestamp <= '" ~ delta_from ~ "'::timestamp" -%}
+  {%- set window_check_result = run_query(window_check_query) -%}
+  {%- if window_check_result.rows[0][0] -%}
     {{ log("  Delta window is empty. Nothing to process.", info=true) }}
-    {%- do var('oef_should_process', false) -%}
-    {%- do var('oef_delta_from', delta_from) -%}
-    {%- do var('oef_delta_to', delta_to) -%}
-    {%- do var('oef_data_min', none) -%}
-    {%- do var('oef_backfilling', false) -%}
-    {{ return('') }}
+    {{ return("SET oef_should_process = FALSE;") }}
   {%- endif -%}
   
   {# Calculate data_min #}
@@ -199,21 +190,21 @@
       {{ log("  Rolling back to effective_to: " ~ model_meta.current_state.last_effective_time, info=true) }}
       {% set rollback_result = operation_rollback_table(this.name, model_meta.current_state.last_effective_time, false, false, true) %}
     {%- else -%}
-      {%- set rollback_date = "DATEADD('day', -" ~ rollback_days ~ ", '" ~ delta_from ~ "'::timestamp)" -%}
+      {# Evaluate the rollback date #}
+      {%- set rollback_date_query = "SELECT DATEADD('day', -" ~ rollback_days ~ ", '" ~ delta_from ~ "'::timestamp)::varchar" -%}
+      {%- set rollback_date_result = run_query(rollback_date_query) -%}
+      {%- set rollback_date = rollback_date_result.rows[0][0] -%}
       {{ log("  Rolling back " ~ rollback_days ~ " days from delta_from", info=true) }}
       {% set rollback_result = operation_rollback_table(this.name, rollback_date, false, false, true) %}
     {%- endif -%}
   {%- endif -%}
   
   {# ========================================
-     STEP 9: SET VARIABLES FOR MODEL
+     STEP 9: RETURN SET STATEMENT
      ======================================== #}
-  {%- do var('oef_should_process', true) -%}
-  {%- do var('oef_delta_from', delta_from) -%}
-  {%- do var('oef_delta_to', delta_to) -%}
-  {%- do var('oef_data_min', data_min) -%}
-  {%- do var('oef_backfilling', is_backfilling) -%}
-  {{ return('') }}
+  {{ return("SET 
+  (oef_should_process, oef_delta_from, oef_delta_to, oef_delta_min, oef_backfilling) =
+  (TRUE, '" ~ delta_from ~ "', '" ~ delta_to ~ "', '" ~ data_min ~ "', " ~ is_backfilling ~ ");") }}
 
 {%- endif -%}
 {% endmacro %}
