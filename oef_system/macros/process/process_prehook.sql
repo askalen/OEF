@@ -5,7 +5,9 @@
      STEP 1: LOG MODEL START
      ======================================== #}
   {{ log("", info=true) }}
+  {{ log("********************************************", info=true) }}
   {{ log("Running model: " ~ this.name, info=true) }}
+  {{ log("********************************************", info=true) }}
 
   {# ========================================
      STEP 2: GET MODEL CONFIGURATION
@@ -25,41 +27,54 @@
      ======================================== #}
   {%- set model_meta = get_model_meta() -%}
   
-  {# ========================================
+{# ========================================
      STEP 5: CHECK PROCESSING CONDITIONS
      ======================================== #}
-  {# Check if lock was acquired or if existing lock is stale #}
+  {# Check if lock was acquired #}
   {%- set has_lock = model_meta.current_state.lock_id == invocation_id -%}
-  {%- set lock_is_stale = false -%}
   {%- set timeout_minutes = var('lock_timeout_minutes', 30) -%}
-
-  {%- if not has_lock and model_meta.current_state.lock_id is not none -%}
-    {# Check if the lock is stale #}
-    {%- set check_stale_query %}
-      SELECT locked_at < DATEADD('minute', -{{ timeout_minutes }}, CURRENT_TIMESTAMP()) as is_stale
-      FROM meta.model
-      WHERE model_name = '{{ this.name }}'
-        AND locked_run_id IS NOT NULL
-    {%- endset %}
+  {{ log("► Checking for data lock...", info=true) }}
+  {%- if not has_lock -%}
     
-    {%- set stale_results = run_query(check_stale_query) -%}
-    {%- if stale_results and stale_results.rows|length > 0 -%}
-      {%- set lock_is_stale = stale_results.rows[0][0] -%}
-    {%- endif -%}
     
-    {%- if lock_is_stale -%}
-      {{ log("  Found stale lock, clearing and retrying...", info=true) }}
-      {{ operation_clear_lock(force=true) }}
-      {{ set_model_meta_lock() }}
-      {# Re-get metadata after clearing stale lock #}
-      {%- set model_meta = get_model_meta() -%}
-      {%- set has_lock = model_meta.current_state.lock_id == invocation_id -%}
+    {%- if model_meta.current_state.lock_id is not none -%}
+      {# Another lock exists - check if its stale using the timestamp we already have #}
+      {%- if model_meta.current_state.locked_at -%}
+        {%- set stale_check_query %}
+          SELECT '{{ model_meta.current_state.locked_at }}'::timestamp < DATEADD('minute', -{{ timeout_minutes }}, CURRENT_TIMESTAMP()) as is_stale
+        {%- endset %}
+        
+        {%- set stale_result = run_query(stale_check_query) -%}
+        {%- set lock_is_stale = stale_result.rows[0][0] if stale_result and stale_result.rows|length > 0 else false -%}
+        
+        {%- if lock_is_stale -%}
+          {{ log("    Found stale lock from " ~ model_meta.current_state.locked_at ~ ", clearing and retrying...", info=true) }}
+          {{ operation_clear_lock(force=true) }}
+          {{ set_model_meta_lock() }}
+          {# Re-get metadata after clearing stale lock #}
+          {%- set model_meta = get_model_meta() -%}
+          {%- set has_lock = model_meta.current_state.lock_id == invocation_id -%}
+          
+          {%- if not has_lock -%}
+            {{ log("    Another process acquired lock after stale clear", info=true) }}
+          {%- endif -%}
+        {%- else -%}
+          {{ log("    Active lock found from " ~ model_meta.current_state.locked_at, info=true) }}
+        {%- endif -%}
+      {%- else -%}
+        {{ log("    Lock exists but no timestamp found - treating as active", info=true) }}
+      {%- endif -%}
+    {%- else -%}
+      {# No lock exists but we couldn't acquire it - shouldn't happen #}
+      {{ log("    WARNING: Failed to acquire lock but no existing lock found", info=true) }}
     {%- endif -%}
   {%- endif -%}
 
   {%- if not has_lock -%}
-    {{ log("  Processing lock active, skipping table", info=true) }}
+    {{ log("    Processing lock active, skipping table", info=true) }}
     {{ return("SET oef_should_process = FALSE;") }}
+  {%- else -%}
+    {{ log("  ✓ Lock acquired successfully", info=true) }}
   {%- endif -%}
   
   {# ========================================
@@ -173,11 +188,12 @@
   {# ========================================
      STEP 7: LOGGING
      ======================================== #}
-  {{ log("  delta_from: " ~ delta_from, info=true) }}
-  {{ log("  delta_to: " ~ delta_to, info=true) }}
-  {{ log("  data_min: " ~ data_min, info=true) }}
+  {{ log("► Setting Snowflake variables", info=true) }}
+  {{ log("    delta_from: " ~ delta_from, info=true) }}
+  {{ log("    delta_to: " ~ delta_to, info=true) }}
+  {{ log("    data_min: " ~ data_min, info=true) }}
   {%- if is_backfilling -%}
-  {{ log("  backfilling: true", info=true) }}
+  {{ log("    backfilling: true", info=true) }}
   {%- endif -%}
   
   {# ========================================

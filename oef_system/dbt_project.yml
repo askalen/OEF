@@ -16,6 +16,11 @@ clean-targets:
 vars:
   lock_timeout_minutes: 3
 
+flags:
+  warn_error_options:
+    silence:
+      - UnusedResourceConfigPath
+
 models:
   oef_system:
     +pre-hook: "{{process_prehook()}}"
@@ -48,7 +53,3 @@ models:
         +schema: ana
     reporting:
       +database: reporting_db
-      exampledept:
-        +schema: exampledept
-      exampleexport:
-        +schema: exampleexport

@@ -16,9 +16,9 @@
   {%- set results = run_query(unlock_query) -%}
   
   {%- if force -%}
-    {{ log("Force cleared lock for model: " ~ target_model, info=true) }}
+    {{ log("  ✓ Force cleared lock for model: " ~ target_model, info=true) }}
   {%- else -%}
-    {{ log("Cleared lock for model: " ~ target_model, info=true) }}
+    {{ log("✓   Cleared lock for model: " ~ target_model, info=true) }}
   {%- endif -%}
 {%- endif -%}
 {% endmacro %}
@@ -27,7 +27,7 @@
 {%- if execute -%}
   {%- set timeout_minutes = var('lock_timeout_minutes', 30) -%}
   
-  {{ log("Clearing stale locks older than " ~ timeout_minutes ~ " minutes...", info=true) }}
+  {{ log("  Clearing stale locks older than " ~ timeout_minutes ~ " minutes...", info=true) }}
   
   {%- set clear_query %}
     UPDATE meta.model 
@@ -42,7 +42,7 @@
   
   {%- if results -%}
     {%- set rows_affected = results.rows_affected if results.rows_affected is defined else 0 -%}
-    {{ log("Cleared " ~ rows_affected ~ " stale locks", info=true) }}
+    {{ log("    Cleared " ~ rows_affected ~ " stale locks", info=true) }}
   {%- endif -%}
   
 {%- endif -%}

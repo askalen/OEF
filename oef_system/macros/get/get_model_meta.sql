@@ -35,6 +35,7 @@
 SELECT 
   -- Current model metadata
   MAX(IFF(model_name = '{{ this.name }}', locked_run_id, NULL)) as current_lock_id,
+  MAX(IFF(model_name = '{{ this.name }}', locked_at, NULL)) as current_locked_at,
   MAX(IFF(model_name = '{{ this.name }}', data_from IS NULL, NULL)) as is_first_run,
   MAX(IFF(model_name = '{{ this.name }}', effective_to, NULL)) as last_effective_time,
   MAX(IFF(model_name = '{{ this.name }}', data_to, NULL)) as last_data_time,
@@ -82,6 +83,7 @@ WHERE model_name = '{{ this.name }}'
     },
     'current_state': {
       'lock_id': none,
+      'locked_at': none,
       'is_first_run': true, 
       'last_effective_time': none,
       'last_data_time': none,
@@ -109,16 +111,17 @@ WHERE model_name = '{{ this.name }}'
   },
   'current_state': {
     'lock_id': row[0],
-    'is_first_run': row[1], 
-    'last_effective_time': row[2],
-    'last_data_time': row[3],
-    'last_process_time': row[4]
+    'locked_at': row[1],
+    'is_first_run': row[2], 
+    'last_effective_time': row[3],
+    'last_data_time': row[4],
+    'last_process_time': row[5]
   },
   'upstream_states': {
-    'table_names': row[5],
-    'effective_times': row[6],
-    'data_times': row[7],
-    'is_slow_changing': row[8]
+    'table_names': row[6],
+    'effective_times': row[7],
+    'data_times': row[8],
+    'is_slow_changing': row[9]
   }
 } -%}
 
