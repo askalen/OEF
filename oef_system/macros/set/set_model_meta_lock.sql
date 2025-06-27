@@ -3,7 +3,7 @@
 
 {%- set lock_query %}
 MERGE INTO meta.model AS target
-USING (SELECT '{{ this.name }}' AS model_name, '{{ invocation_id }}' AS run_id) AS source
+USING (SELECT '{{ model.name }}' AS model_name, '{{ invocation_id }}' AS run_id) AS source
 ON target.model_name = source.model_name
 WHEN MATCHED AND target.locked_run_id IS NULL THEN
   UPDATE SET 

@@ -28,25 +28,25 @@
 {%- endfor -%}
 
 {#- Determine table type for later use -#}
-{%- set is_src_table = this.name.startswith('src_') or source_models|length > 0 -%}
+{%- set is_src_table = model.name.startswith('src_') or source_models|length > 0 -%}
 
 {#- Build single query to get all metadata -#}
 {%- set meta_query %}
 SELECT 
   -- Current model metadata
-  MAX(IFF(model_name = '{{ this.name }}', locked_run_id, NULL)) as current_lock_id,
-  MAX(IFF(model_name = '{{ this.name }}', locked_at, NULL)) as current_locked_at,
-  MAX(IFF(model_name = '{{ this.name }}', data_from IS NULL, NULL)) as is_first_run,
-  MAX(IFF(model_name = '{{ this.name }}', effective_to, NULL)) as last_effective_time,
-  MAX(IFF(model_name = '{{ this.name }}', data_to, NULL)) as last_data_time,
-  MAX(IFF(model_name = '{{ this.name }}', source_processed_to, NULL)) as last_process_time,
+  MAX(IFF(model_name = '{{ model.name }}', locked_run_id, NULL)) as current_lock_id,
+  MAX(IFF(model_name = '{{ model.name }}', locked_at::timestamp::varchar, NULL)) as current_locked_at,
+  MAX(IFF(model_name = '{{ model.name }}', data_from IS NULL, NULL)) as is_first_run,
+  MAX(IFF(model_name = '{{ model.name }}', effective_to::timestamp::varchar, NULL)) as last_effective_time,
+  MAX(IFF(model_name = '{{ model.name }}', data_to::timestamp::varchar, NULL)) as last_data_time,
+  MAX(IFF(model_name = '{{ model.name }}', source_processed_to::timestamp::varchar, NULL)) as last_process_time,
   
   {%- if not is_src_table and ref_models|length > 0 %}
   -- Upstream model metadata (for non-SRC tables with dependencies)
-  ARRAY_AGG(IFF(model_name != '{{ this.name }}', model_name, NULL)) WITHIN GROUP (ORDER BY model_name) as upstream_table_names,
-  ARRAY_AGG(IFF(model_name != '{{ this.name }}', effective_to, NULL)) WITHIN GROUP (ORDER BY model_name) as upstream_effective_times,
-  ARRAY_AGG(IFF(model_name != '{{ this.name }}', data_to, NULL)) WITHIN GROUP (ORDER BY model_name) as upstream_data_times,
-  ARRAY_AGG(IFF(model_name != '{{ this.name }}', is_slow, NULL)) WITHIN GROUP (ORDER BY model_name) as upstream_is_slow_changing
+  ARRAY_AGG(IFF(model_name != '{{ model.name }}', model_name, NULL)) WITHIN GROUP (ORDER BY model_name) as upstream_table_names,
+  ARRAY_AGG(IFF(model_name != '{{ model.name }}', effective_to::timestamp::varchar, NULL)) WITHIN GROUP (ORDER BY model_name) as upstream_effective_times,
+  ARRAY_AGG(IFF(model_name != '{{ model.name }}', data_to::timestamp::varchar, NULL)) WITHIN GROUP (ORDER BY model_name) as upstream_data_times,
+  ARRAY_AGG(IFF(model_name != '{{ model.name }}', is_slow, NULL)) WITHIN GROUP (ORDER BY model_name) as upstream_is_slow_changing
   {%- else %}
   -- No upstream dependencies to track
   ARRAY_CONSTRUCT() as upstream_table_names,
@@ -56,7 +56,7 @@ SELECT
   {%- endif %}
 
 FROM meta.model 
-WHERE model_name = '{{ this.name }}'
+WHERE model_name = '{{ model.name }}'
 {%- if ref_models|length > 0 %}
   OR model_name IN ({{ "'" ~ ref_models|join("','") ~ "'" }})
 {%- endif %}
@@ -67,7 +67,7 @@ WHERE model_name = '{{ this.name }}'
 
 {%- if not results -%}
   {{ operation_clear_lock(force=true) }}
-  {{- exceptions.raise_compiler_error("Failed to retrieve model metadata for: " ~ this.name) -}}
+  {{- exceptions.raise_compiler_error("Failed to retrieve model metadata for: " ~ model.name) -}}
 {%- endif -%}
 
 {%- set result_rows = results.rows -%}

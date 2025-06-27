@@ -6,14 +6,14 @@
      ======================================== #}
   {{ log("", info=true) }}
   {{ log("********************************************", info=true) }}
-  {{ log("Running model: " ~ this.name, info=true) }}
+  {{ log("Running model: " ~ model.name, info=true) }}
   {{ log("********************************************", info=true) }}
 
   {# ========================================
      STEP 2: GET MODEL CONFIGURATION
      ======================================== #}
   {%- set model_configs = get_model_configs() -%}
-  {%- set is_src_table = this.name.startswith('src_') or model_configs.upstreams.sources|length > 0 -%}
+  {%- set is_src_table = model.name.startswith('src_') or model_configs.upstreams.sources|length > 0 -%}
   {%- set table_type = model_configs.type -%}
   
   {# ========================================
@@ -23,7 +23,6 @@
   
   {# ========================================
      STEP 4: GET MODEL METADATA
-     Includes lock verification
      ======================================== #}
   {%- set model_meta = get_model_meta() -%}
   
@@ -188,10 +187,10 @@
   {# ========================================
      STEP 7: LOGGING
      ======================================== #}
-  {{ log("► Setting Snowflake variables", info=true) }}
-  {{ log("    delta_from: " ~ delta_from, info=true) }}
-  {{ log("    delta_to: " ~ delta_to, info=true) }}
-  {{ log("    data_min: " ~ data_min, info=true) }}
+{{ log("► Setting Snowflake variables", info=true) }}
+{{ log("    delta_from:  " ~ (delta_from ~ ' 00:00:00.000' if delta_from|length == 10 else delta_from), info=true) }}
+{{ log("    delta_to:    " ~ (delta_to ~ ' 00:00:00.000' if delta_to|length == 10 else delta_to), info=true) }}
+{{ log("    data_min:    " ~ (data_min ~ ' 00:00:00.000' if data_min|length == 10 else data_min), info=true) }}
   {%- if is_backfilling -%}
   {{ log("    backfilling: true", info=true) }}
   {%- endif -%}
@@ -204,14 +203,14 @@
   {%- if rollback_days is not none and not model_meta.current_state.is_first_run -%}
     {%- if rollback_days == 0 -%}
       {{ log("  Rolling back to effective_to: " ~ model_meta.current_state.last_effective_time, info=true) }}
-      {% set rollback_result = operation_rollback_table(this.name, model_meta.current_state.last_effective_time, false, false, true) %}
+      {% set rollback_result = operation_rollback_table(model.name, model_meta.current_state.last_effective_time, false, false, true) %}
     {%- else -%}
       {# Evaluate the rollback date #}
       {%- set rollback_date_query = "SELECT DATEADD('day', -" ~ rollback_days ~ ", '" ~ delta_from ~ "'::timestamp)::varchar" -%}
       {%- set rollback_date_result = run_query(rollback_date_query) -%}
       {%- set rollback_date = rollback_date_result.rows[0][0] -%}
       {{ log("  Rolling back " ~ rollback_days ~ " days from delta_from", info=true) }}
-      {% set rollback_result = operation_rollback_table(this.name, rollback_date, false, false, true) %}
+      {% set rollback_result = operation_rollback_table(model.name, rollback_date, false, false, true) %}
     {%- endif -%}
   {%- endif -%}
   
