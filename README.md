@@ -53,9 +53,16 @@ Data processing layers from raw to analytics-ready:
 - [IN - Ingestion Layer](docs/layers.md#in-ingestion-layer)
 - [DV - Data Vault](docs/layers.md#dv-data-vault)
 - [BV - Business Vault](docs/layers.md#bv-business-vault)
-- [INT - Intermediate Layer](docs/layers.md#int-intermediate-layer)
+- [FCT - Fact Layer](docs/layers.md#int-fact-layer)
 - [OUT - Output Layer](docs/layers.md#out-output-layer)
 - [MART - Mart Layer](docs/layers.md#mart-mart-layer)
+
+### [Configurations](docs/configurations.md)
+Data processing layers from raw to analytics-ready:
+- [unique_key](docs/configurations.md#unique_key)
+- [_initial_date](docs/configurations.md#_initial_date)
+- [_delta_limit](docs/configurations.md#_delta_limit)
+- [_rollback_days](docs/configurations.md#_rollback_days)
 
 ### [Fields](docs/fields.md)
 Standard field types and naming conventions:

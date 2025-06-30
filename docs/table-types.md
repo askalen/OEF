@@ -25,7 +25,7 @@ All tables include standardized meta fields for auditing and change tracking. Fi
 - **Primary Key(s):** 1 or more fields. For relationships, primary object listed first
 - **valid_from:** Timestamp when this version became effective (UTC)
 - **valid_to:** Timestamp when this version ended (9999-12-31 for current record, UTC)
-- **Foreign Keys:** (INT layer onwards only) Alphabetical order
+- **Foreign Keys:** (FCT layer onwards only) Alphabetical order
 - **Attributes:** Alphabetical order  
 - **meta_audit:** [Link to meta fields section]
 - **meta_changes:** [Link to meta fields section]
