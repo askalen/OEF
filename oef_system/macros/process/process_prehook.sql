@@ -10,12 +10,20 @@
   {{ log("********************************************", info=true) }}
 
   {# ========================================
+     STEP 1b: TESTING AREA
+     ======================================== #}
+
+
+  {# ========================================
      STEP 2: GET MODEL CONFIGURATION
      ======================================== #}
   {%- set model_configs = get_model_configs() -%}
   {%- set is_src_table = model.name.startswith('src_') or model_configs.upstreams.sources|length > 0 -%}
   {%- set table_type = model_configs.type -%}
-  
+
+  {{ log(model_configs.attribute_fields, info=true) }}
+
+
   {# ========================================
      STEP 3: SET LOCK
      ======================================== #}
@@ -25,7 +33,7 @@
      STEP 4: GET MODEL METADATA
      ======================================== #}
   {%- set model_meta = get_model_meta() -%}
-  
+
 {# ========================================
      STEP 5: CHECK PROCESSING CONDITIONS
      ======================================== #}
