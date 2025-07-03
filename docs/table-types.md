@@ -6,7 +6,7 @@ Standard table structures and when to use each type in the Object Evolution Fram
 
 The OEF uses a suffix-based naming convention to indicate table structure and behavior. Each table name ends with a suffix that defines its type and temporal characteristics:
 
-- **Base Type:** Single letter indicating the fundamental table structure (H, R, M, E, A, S)
+- **Base Type:** Single letter indicating the fundamental table structure (H, R, E, AX, SX, C)
 - **Time Period:** Optional second letter for temporal variants (D, W, M, Q, Y)
 
 Examples:
@@ -14,6 +14,7 @@ Examples:
 - `login_e` - Event table for login events  
 - `user_activity_ad` - Daily aggregate table for user activity
 - `account_snapshot_sm` - Monthly snapshot table for accounts
+- `customer_hc` - Current state of customers
 
 All tables include standardized meta fields for auditing and change tracking. Field ordering follows consistent patterns: primary keys first, time fields, foreign keys (alphabetical), attributes (alphabetical), then meta fields.
 
@@ -30,6 +31,16 @@ All tables include standardized meta fields for auditing and change tracking. Fi
 - **meta_audit:** [Link to meta fields section]
 - **meta_changes:** [Link to meta fields section]
 - **meta_datahash:** [Link to meta fields section]
+
+**Configurations:**
+
+**Mandatory:**
+- **unique_key:** Standard dbt format, array of string field names. Must include primary object ID(s) AND valid_from
+
+**Optional:**
+- **_initial_date:** String date (e.g., "2020-01-01")
+- **_delta_limit:** Positive integer
+- **_rollback_days:** Positive integer (can be 0)
 
 **Temporal Variants:**
 - **HX tables:** Same structure, but changes only checked each period instead of tracking every individual change. So HW would check at the start of each week, and if the object had any changes it would add one new row.
@@ -53,6 +64,16 @@ All tables include standardized meta fields for auditing and change tracking. Fi
 - **meta_changes:** [Link to meta fields section]
 - **meta_datahash:** [Link to meta fields section]
 
+**Configurations:**
+
+**Mandatory:**
+- **unique_key:** Standard dbt format, array of string field names. Must include primary object ID (only one object for R tables) AND valid_from
+
+**Optional:**
+- **_initial_date:** String date (e.g., "2020-01-01")
+- **_delta_limit:** Positive integer
+- **_rollback_days:** Positive integer (can be 0)
+
 **Temporal Variants:**
 - **RC tables:** Current state view of the registry, essentially a hub table. Same structure as R but without valid_to field (since it only shows current mappings)
 
@@ -69,10 +90,6 @@ All tables include standardized meta fields for auditing and change tracking. Fi
 - **Source system lineage:** [To be documented]
 - **Mapping conflict resolution:** [To be documented]
 
-## M - Mapping Tables
-
-[To be documented]
-
 ## E - Event Tables
 
 **Purpose:** One row per event, tracking activities and actions related to business objects.
@@ -85,12 +102,19 @@ All tables include standardized meta fields for auditing and change tracking. Fi
 - **meta_audit:** [Link to meta fields section]
 - **meta_datahash:** [Link to meta fields section]
 
+**Configurations:**
+
+**Optional:**
+- **_initial_date:** String date (e.g., "2020-01-01")
+- **_delta_limit:** Positive integer
+- **_rollback_days:** Positive integer (can be 0)
+
 **Usage Patterns:**
 - **Event analysis:** [To be documented]
 - **Activity tracking:** [To be documented]
 - **Behavioral aggregation:** [To be documented]
 
-## A - Aggregate Tables
+## AX - Aggregate Tables
 
 **Purpose:** Counts and summarizes events within given periods. Usually aggregated from E tables and denormalized in the INT layer.
 
@@ -104,8 +128,18 @@ All tables include standardized meta fields for auditing and change tracking. Fi
 - **meta_audit:** [Link to meta fields section]
 - **meta_datahash:** [Link to meta fields section]
 
+**Configurations:**
+
+**Mandatory:**
+- **unique_key:** Standard dbt format, array of string field names. Must include primary object IDs AND period_begin
+
+**Optional:**
+- **_initial_date:** String date (e.g., "2020-01-01")
+- **_delta_limit:** Positive integer
+- **_rollback_days:** Positive integer (DEFAULT 0, these tables always have some element of rollback)
+
 **Temporal Variants:**
-- **AX tables:** Period-based aggregations (e.g., AD for daily, AW for weekly, AM for monthly)
+- **AX tables only:** No base A table exists - always has time period suffix (e.g., AD for daily, AW for weekly, AM for monthly)
 - **Current period handling:** Includes most recent incomplete period - gets overwritten with each run until period is complete
 
 **Usage Patterns:**
@@ -113,17 +147,27 @@ All tables include standardized meta fields for auditing and change tracking. Fi
 - **Trend tracking:** [To be documented]
 - **Performance metrics:** [To be documented]
 
-## S - Snapshot Tables
+## SX - Periodic Snapshots
 
-**Purpose:** Point-in-time snapshots for reporting purposes. Derivable from HX and H tables but optimized for reporting consumption.
+**Purpose:** Point-in-time snapshots for reporting purposes at regular intervals. Derivable from HX and H tables but optimized for reporting consumption.
 
 **Structure:**
 - **Primary Key(s):** 1 or more fields. For relationships, primary object listed first
-- **valid_at:** Dates or timestamps separated by time period, plus a 'current' option
+- **valid_at:** Dates or timestamps separated by time period
 - **Foreign Keys:** Related business objects, alphabetical order
 - **Attributes:** Alphabetical order
 - **meta_audit:** [Link to meta fields section]
 - **meta_datahash:** [Link to meta fields section]
+
+**Configurations:**
+
+**Mandatory:**
+- **unique_key:** Standard dbt format, array of string field names. Must include primary object IDs AND period_begin
+
+**Optional:**
+- **_initial_date:** String date (e.g., "2020-01-01")
+- **_delta_limit:** Positive integer, must be greater than or equal to the days in the period
+- **_rollback_days:** Positive integer (DEFAULT 0, these tables always have some element of rollback)
 
 **Temporal Variants:**
 - **SX tables only:** No base S table exists - always has time period suffix (e.g., SD for daily, SW for weekly, SM for monthly)
@@ -131,12 +175,40 @@ All tables include standardized meta fields for auditing and change tracking. Fi
 **Key Features:**
 - Reporting-optimized structure
 - Derivable from H and HX tables
-- Regular time intervals plus current state
+- Regular time intervals
 
 **Usage Patterns:**
 - **Point-in-time reporting:** [To be documented]
 - **Dashboard optimization:** [To be documented]
 - **Historical comparisons:** [To be documented]
+
+## C - Current State Tables
+
+**Purpose:** Single current state of objects or entities for reporting purposes. No historical tracking - just the most recent state.
+
+**Structure:**
+- **Primary Key(s):** 1 or more fields. For relationships, primary object listed first
+- **updated_at:** Timestamp when this state was last updated (UTC)
+- **Foreign Keys:** Related business objects, alphabetical order
+- **Attributes:** Alphabetical order
+- **meta_audit:** [Link to meta fields section]
+- **meta_datahash:** [Link to meta fields section]
+
+**Configurations:**
+
+**Mandatory:**
+- **unique_key:** Standard dbt format, array of string field names. Must include primary object IDs AND period_begin
+
+**Key Features:**
+- Single row per object/entity
+- No valid_to field - always current state
+- Optimized for current state queries
+- Common in MART layer for reporting
+
+**Usage Patterns:**
+- **Current state reporting:** [To be documented]
+- **Dashboard current values:** [To be documented]
+- **Operational reporting:** [To be documented]
 
 ## Time Variants
 
@@ -152,6 +224,7 @@ Time period suffixes modify base table types to create period-based structures:
 - `customer_hd` - Daily historical snapshots of customers
 - `login_aw` - Weekly login activity aggregates
 - `account_sm` - Monthly account snapshots
+- `customer_hc` - Current state of customers
 
 **Key Behaviors:**
 - Period tables always include the most recent data available, even if the current period is incomplete
