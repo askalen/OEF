@@ -26,7 +26,7 @@ models:
     +pre-hook: "{{process_prehook()}}"
     +post-hook: "{{process_posthook()}}"
     processing:
-      +database: processing_db
+      +database: oef
       +materialized: table
       meta:
         +schema: meta
@@ -39,17 +39,20 @@ models:
         history:
           +_rollback_days: 0
           +_table_structure: history
-          +cluster_by: ['date(effective_to)']
+          +cluster_by: ['date(valid_to)']
           +incremental_predicates: 
-            - "date(DBT_INTERNAL_DEST.effective_to) = date('9999-12-31')"
+            - "date(DBT_INTERNAL_DEST.valid_to) = date('9999-12-31')"
           +incremental_strategy: merge
-      vin:
-        +schema: vin
-      vlt:
-        +schema: vlt
-      ain:
-        +schema: ain
-      ana:
-        +schema: ana
+      extsrc:
+        +schema: extsrc
+      extanl:
+        +schema: extanl
+        +materialized: incremental
+        +_rollback_days: 0
+        +_table_structure: history
+        +cluster_by: ['date(valid_to)']
+        +incremental_predicates: 
+          - "date(DBT_INTERNAL_DEST.valid_to) = date('9999-12-31')"
+        +incremental_strategy: merge
     reporting:
       +database: reporting_db

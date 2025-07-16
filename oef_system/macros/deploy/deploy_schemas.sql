@@ -5,10 +5,15 @@
 {%- set create_model_table %}
 CREATE SCHEMA IF NOT EXISTS meta;
 CREATE SCHEMA IF NOT EXISTS src;
-CREATE SCHEMA IF NOT EXISTS ain;
-CREATE SCHEMA IF NOT EXISTS ana;
-CREATE SCHEMA IF NOT EXISTS vin;
-CREATE SCHEMA IF NOT EXISTS vlt;
+CREATE SCHEMA IF NOT EXISTS dv;
+CREATE SCHEMA IF NOT EXISTS bv;
+CREATE SCHEMA IF NOT EXISTS fct;
+CREATE SCHEMA IF NOT EXISTS anl;
+CREATE SCHEMA IF NOT EXISTS extraw;
+CREATE SCHEMA IF NOT EXISTS extsrc;
+CREATE SCHEMA IF NOT EXISTS extanl;
+
+CREATE SCHEMA IF NOT EXISTS dev;
 {%- endset %}
 
 {% do run_query(create_model_table) -%}
@@ -16,9 +21,12 @@ CREATE SCHEMA IF NOT EXISTS vlt;
 {{ log("Deployed schemas:", info=true) }}
 {{ log("  META", info=true) }}
 {{ log("  SRC", info=true) }}
-{{ log("  VIN", info=true) }}
-{{ log("  VLT", info=true) }}
-{{ log("  AIN", info=true) }}
-{{ log("  ANA", info=true) }}
-
+{{ log("  DV", info=true) }}
+{{ log("  BV", info=true) }}
+{{ log("  FCT", info=true) }}
+{{ log("  ANL", info=true) }}
+{{ log("  EXTRAW", info=true) }}
+{{ log("  EXTSRC", info=true) }}
+{{ log("  EXTANL", info=true) }}
+{{ log("  DEV", info=true) }}
 {% endmacro %}
