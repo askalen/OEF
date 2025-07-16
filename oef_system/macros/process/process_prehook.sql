@@ -10,11 +10,6 @@
   {{ log("********************************************", info=true) }}
 
   {# ========================================
-     STEP 1b: TESTING AREA
-     ======================================== #}
-
-
-  {# ========================================
      STEP 2: GET MODEL CONFIGURATION
      ======================================== #}
   {%- set model_configs = get_model_configs() -%}
@@ -23,6 +18,16 @@
 
   {{ log(model_configs.attribute_fields, info=true) }}
 
+  {# ========================================
+     STEP 2b: HANDLE DEV RESET
+     ======================================== #}
+  {%- if model_configs.configs.get('_dev', false) -%}
+    {{ log("► Dev mode enabled - resetting model", info=true) }}
+    {% set reset_result = operation_reset_model() %}
+    {%- if not reset_result -%}
+      {{ log("    Reset failed, continuing with normal processing", info=true) }}
+    {%- endif -%}
+  {%- endif -%}
 
   {# ========================================
      STEP 3: SET LOCK

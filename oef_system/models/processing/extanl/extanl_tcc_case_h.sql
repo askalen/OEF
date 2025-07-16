@@ -1,5 +1,6 @@
 {{ config(
-  unique_key = ['case_id','valid_from']
+  unique_key = ['case_id','valid_from'],
+  _dev = true
 ) }}
 
 WITH cleanup as (
