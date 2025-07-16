@@ -1,0 +1,172 @@
+# Source Table YML Template
+# File naming: {source_name}_{table_name}_{h|e}.yml
+# Examples: salesforce_prod_account_h.yml, erp_main_order_e.yml
+
+version: 2
+
+sources:
+  - name: {source_name}              # From planning doc (salesforce_prod, erp_main, etc.)
+    database: {actual_database_name} # Real database name in your data platform
+    schema: {actual_schema_name}     # Real schema name (omit if no schema)
+    
+    tables:
+    - name: {actual_table_name}      # Exact table name as it exists in source
+      description: "{Business purpose - what this table contains}"  # Optional
+      meta:
+        _filter: {SQL_where_condition}  # Optional: is_deleted = FALSE, validity = 'VALID'
+        _type: {journal|snapshot}       # journal = transactional, snapshot = warehouse extract
+        _valid_from: '{YYYY-MM-DD}'     # Optional: earliest date to process
+        _valid_to: '{YYYY-MM-DD}'       # Optional: latest date to process
+      
+      columns:
+        # PRIMARY KEY FIELDS (required for H tables, optional for E tables)
+        - name: {primary_key_field}
+          description: "{Business meaning}"  # Only if additional context needed
+          _purpose: pk
+          
+        # Add more PK fields if compound key:
+        # - name: {secondary_pk_field}
+        #   _purpose: pk
+          
+        # DATA TIME FIELD (required - exactly one per table)
+        - name: {data_time_field}
+          _purpose: data_time
+          _transformation: {field_name}::TIMESTAMP  # Optional: if conversion needed
+          
+        # PROCESS TIME FIELD (optional - at most one per table)
+        # If omitted, defaults to match data_time field
+        - name: {process_time_field}
+          _purpose: process_time
+          _transformation: {field_name}::TIMESTAMP  # Optional: if conversion needed
+          
+        # ATTRIBUTE FIELDS (business data)
+        - name: {business_field_1}
+          description: "{Business meaning}"  # Only if context needed
+          _purpose: attribute
+          
+        - name: {business_field_2}
+          _purpose: attribute
+          _transformation: UPPER({field_name})  # Optional: if standardization needed
+          
+        # META FIELDS (audit/process data)
+        - name: {audit_field}
+          description: "{Process tracking purpose}"  # Only if context needed
+          _purpose: meta
+          
+        # EXCLUDED FIELDS (fields to ignore during processing)
+        - name: {field_to_exclude}
+          description: "{Why excluded}"
+          _exclude: true
+
+# =============================================================================
+# EXAMPLES - Delete this section when creating actual files
+# =============================================================================
+
+# Example H Table (Object Attributes):
+# File: salesforce_prod_account_h.yml
+# sources:
+#   - name: salesforce_prod
+#     database: salesforce_db
+#     schema: production
+#     
+#     tables:
+#     - name: account
+#       description: "Customer and prospect organization data"
+#       meta:
+#         _filter: is_deleted = FALSE
+#         _type: journal
+#         _valid_from: '2020-01-01'
+#         _valid_to: '2024-12-31'
+#       columns:
+#         - name: id
+#           _purpose: pk
+#         - name: last_modified_date
+#           _purpose: data_time
+#           _transformation: last_modified_date::TIMESTAMP
+#         - name: system_modstamp
+#           _purpose: process_time
+#         - name: name
+#           description: "Organization name"
+#           _purpose: attribute
+#         - name: type
+#           description: "Account classification (Customer, Prospect, Partner)"
+#           _purpose: attribute
+#         - name: industry
+#           _purpose: attribute
+#         - name: annual_revenue
+#           _purpose: attribute
+#         - name: owner_id
+#           _purpose: attribute
+#         - name: created_by_id
+#           _purpose: meta
+#         - name: internal_notes
+#           description: "Internal system field not needed"
+#           _exclude: true
+
+# Example E Table (Activity Events):
+# File: salesforce_prod_account_e.yml  
+# sources:
+#   - name: salesforce_prod
+#     database: salesforce_db
+#     schema: production
+#     
+#     tables:
+#     - name: account
+#       description: "Account activity and interaction events"
+#       meta:
+#         _filter: is_deleted = FALSE
+#         _type: journal
+#       columns:
+#         - name: id
+#           _purpose: attribute
+#         - name: last_activity_date
+#           _purpose: data_time
+#           _transformation: last_activity_date::TIMESTAMP
+#         - name: last_modified_date
+#           _purpose: process_time
+#         - name: last_modified_by_id
+#           description: "User who performed the activity"
+#           _purpose: attribute
+#         - name: number_of_employees
+#           description: "Current employee count (changes frequently)"
+#           _purpose: attribute
+#         - name: last_viewed_date
+#           _purpose: attribute
+
+# =============================================================================
+# FIELD PURPOSE REFERENCE
+# =============================================================================
+
+# pk:           Primary key field(s)
+#               - H tables: Required (≥1), E tables: Optional
+#               - Combined with data_time should be unique at source grain
+#               
+# data_time:    When the business event occurred  
+#               - Required for all tables (exactly 1)
+#               - Examples: created_date, transaction_time, last_modified_date
+#               
+# process_time: When data was loaded/processed
+#               - Optional (≤1), defaults to data_time if not specified
+#               - Examples: inserted_at, _loaded_at, etl_timestamp
+#               
+# attribute:    Business object attributes and event data
+#               - H tables: Focus on object attributes (name, status, tier)
+#               - E tables: Focus on activity data (counts, user_ids, sources)
+#               
+# meta:         Process/audit tracking fields
+#               - Important for auditing but don't justify new rows
+#               - Examples: batch_id, process_id, created_by_id
+
+# =============================================================================
+# DESCRIPTION GUIDELINES
+# =============================================================================
+
+# Only add descriptions where additional context is needed:
+# - Complex business logic or calculations
+# - Non-obvious field meanings
+# - Important business context
+# 
+# Skip descriptions for:
+# - Self-explanatory fields (name, id, status)
+# - Standard time fields (data_time, process_time)
+# - Fields with clear _purpose classification

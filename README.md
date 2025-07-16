@@ -27,38 +27,43 @@ Complete overview of the framework, use cases, and implementation approach.
 
 ### [Principles](docs/principles.md)
 Core concepts that drive all framework decisions:
-- [Source vs Business Data](docs/principles.md#source-vs-business-data)
-- [State-Focused Architecture](docs/principles.md#state-focused-architecture)
-- [Object Hierarchy](docs/principles.md#object-hierarchy)
+- [Absolute Historical Truth](docs/principles.md#absolute-historical-truth)
+- [Object State Over Transaction Events](docs/principles.md#object-state-over-transaction-events)
+- [Processing Efficiency Over Storage Optimization](docs/principles.md#processing-efficiency-over-storage-optimization)
 
-### [Design](docs/design.md)
-Planning and defining your business objects and data architecture:
-- [Business Object Definition](docs/design.md#business-object-definition)
-- [Object Hierarchy Planning](docs/design.md#object-hierarchy-planning)
-- [Key Mapping Strategy](docs/design.md#key-mapping-strategy)
+### [Business Object Planning](docs/plan_business_objects.md)
+Systematic approach to designing business objects and their relationships:
+- [Business Object Definitions](docs/plan_business_objects.md#business-object-definitions)
+- [Source System Mapping](docs/plan_business_objects.md#source-system-mapping)
+- [Relationship DAG](docs/plan_business_objects.md#relationship-dag)
+
+### [Data Inventory Planning](docs/plan_data_inventory.md)
+Instructions for subject matter experts to document source systems:
+- [Planning Spreadsheet](docs/plan_data_inventory.md#phase-1-planning-spreadsheet)
+- [YML File Creation](docs/plan_data_inventory.md#phase-2-yml-file-creation)
+- [Quality Checklist](docs/plan_data_inventory.md#quality-checklist)
 
 ### [Table Types](docs/table-types.md)
 Standard table structures and when to use each:
-- [H - Historical Tables](docs/table-types.md#h-historical-tables)
-- [R - Registry Tables](docs/table-types.md#r-registry-tables)
-- [M - Mapping Tables](docs/table-types.md#m-mapping-tables)
-- [E - Event Tables](docs/table-types.md#e-event-tables)
-- [A - Aggregate Tables](docs/table-types.md#a-aggregate-tables)
-- [S - Snapshot Tables](docs/table-types.md#s-snapshot-tables)
+- [H - Historical Tables](docs/table-types.md#h---historical-tables)
+- [R - Registry Tables](docs/table-types.md#r---registry-tables)
+- [E - Event Tables](docs/table-types.md#e---event-tables)
+- [AX - Aggregate Tables](docs/table-types.md#ax---aggregate-tables)
+- [SX - Periodic Snapshots](docs/table-types.md#sx---periodic-snapshots)
+- [C - Current State Tables](docs/table-types.md#c---current-state-tables)
 - [Time Variants](docs/table-types.md#time-variants)
 
 ### [Layers](docs/layers.md)
 Data processing layers from raw to analytics-ready:
-- [Source - Raw Data](docs/layers.md#source-raw-data)
-- [IN - Ingestion Layer](docs/layers.md#in-ingestion-layer)
-- [DV - Data Vault](docs/layers.md#dv-data-vault)
-- [BV - Business Vault](docs/layers.md#bv-business-vault)
-- [FCT - Fact Layer](docs/layers.md#int-fact-layer)
-- [OUT - Output Layer](docs/layers.md#out-output-layer)
-- [MART - Mart Layer](docs/layers.md#mart-mart-layer)
+- [IN - Ingestion Layer](docs/layers.md#in---ingestion-layer)
+- [DV - Data Vault](docs/layers.md#dv---data-vault)
+- [BV - Business Vault](docs/layers.md#bv---business-vault)
+- [FCT - Fact Layer](docs/layers.md#fct---fact-layer)
+- [OUT - Output Layer](docs/layers.md#out---output-layer)
+- [MART - Mart Layer](docs/layers.md#mart---mart-layer)
 
 ### [Configurations](docs/configurations.md)
-Data processing layers from raw to analytics-ready:
+Model configuration options and their usage:
 - [unique_key](docs/configurations.md#unique_key)
 - [_initial_date](docs/configurations.md#_initial_date)
 - [_delta_limit](docs/configurations.md#_delta_limit)
@@ -66,24 +71,13 @@ Data processing layers from raw to analytics-ready:
 
 ### [Fields](docs/fields.md)
 Standard field types and naming conventions:
-- [Primary Keys](docs/fields.md#primary-keys)
-- [Time Fields](docs/fields.md#time-fields)
-- [Attribute Fields](docs/fields.md#attribute-fields)
-- [Meta Fields](docs/fields.md#meta-fields)
+- [Naming Structure](docs/fields.md#naming-structure)
+- [Reserved Terms](docs/fields.md#reserved-terms)
+- [JSON Field Strategy](docs/fields.md#json-field-strategy)
+- [Field Ordering](docs/fields.md#field-ordering)
 
-### [Meta Tables](docs/meta-tables.md)
-System tables that track processing state and metadata:
-- [meta.model](docs/meta-tables.md#metamodel)
-- [meta.run](docs/meta-tables.md#metarun)
-- [Usage Patterns](docs/meta-tables.md#usage-patterns)
-
-### [Model Execution](docs/model-execution.md)
-How the system processes data and manages state:
-- [Processing Stages](docs/model-execution.md#processing-stages)
-- [Cursor Tracking](docs/model-execution.md#cursor-tracking)
-- [Locking Mechanism](docs/model-execution.md#locking-mechanism)
-- [Delta Processing](docs/model-execution.md#delta-processing)
-- [Rollback Operations](docs/model-execution.md#rollback-operations)
+### [Data Inventory Template](docs/template_data_inventory.yml)
+YML template for documenting source systems and tables.
 
 ## Package Implementation
 
@@ -99,9 +93,10 @@ See the `oef_system/` directory for the complete implementation.
 
 1. **Environment Setup:** Deploy Snowflake + dbt Core + scheduler
 2. **Package Installation:** Install the OEF dbt package
-3. **Design Phase:** Plan business objects using the design guide
-4. **Implementation:** Build tables layer by layer using provided templates
-5. **Deployment:** Configure data marts for your specific use cases
+3. **Design Phase:** Plan business objects using the [design guide](docs/plan_business_objects.md)
+4. **Data Inventory:** Document source systems using the [inventory guide](docs/plan_data_inventory.md)
+5. **Implementation:** Build tables layer by layer using provided templates
+6. **Deployment:** Configure data marts for your specific use cases
 
 ## Status
 
