@@ -24,7 +24,7 @@
   
   {# Drop the table if it exists #}
   {%- set drop_table_query %}
-    DROP TABLE IF EXISTS {{ target_model }}
+    DROP TABLE IF EXISTS {{ this.schema ~ '.' ~ this.name }}
   {%- endset %}
   
   {%- set drop_results = run_query(drop_table_query) -%}

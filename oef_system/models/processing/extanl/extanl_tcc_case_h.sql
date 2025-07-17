@@ -29,8 +29,8 @@ WITH cleanup as (
     object_construct(
       'address', address_long,
       'city', city,
-      'latitude', try_cast(latitude as float),
-      'longitude', try_cast(longitude as float),
+      'latitude', try_cast(latitude as number(10,8)),
+      'longitude', try_cast(longitude as number(10,8)),
       'state', state,
       'zip', zip_code
     ) as parcel_location,
@@ -40,7 +40,7 @@ WITH cleanup as (
     last_update as status_detail
   FROM  {{ ref('extsrc_tcc_case_j') }} 
   WHERE
-    valid_from > $oef_delta_begin and valid_from <= $oef_delta_end and
+    valid_from > $oef_delta_from and valid_from <= $oef_delta_to and
     case_id is not null and
     valid_from is not null
 ),
@@ -49,10 +49,12 @@ ready as (
     case_id,
     valid_from,
 
+    inspector_id,
     parcel_id,
     request_id,
 
     has_flag,
+    inspector_name,
     parcel_location,
     priority,
     reported_by,

@@ -16,14 +16,17 @@
 with_previous AS (
     -- New records with meta fields
     SELECT 
-        *,
+        {{ pk_fields | join(',\n        ') }},
+        '9999-12-31'::timestamp as valid_to,  -- Place it in correct position
+        {{ attribute_fields | join(',\n        ') }},
         object_construct() as meta_audit,
         object_construct() as meta_changes,
         HASH({{ attribute_fields | join(', ') }}) as meta_datahash,
-        current_timestamp as meta_processed_at,
+        sysdate() as meta_processed_at,
         'new' as _source_type
     FROM {{ cte }}
-    
+
+    {%- if is_incremental() and not (model_configs.configs._dev | default(false)) -%}
     UNION ALL
     
     -- Previous versions of these records (already have meta fields)
@@ -35,6 +38,7 @@ with_previous AS (
         SELECT {{ pk_fields | join(', ') }} 
         FROM {{ cte }}
     )
+    {%- endif %}
 ),
 
 numbered AS (
@@ -79,9 +83,11 @@ compared AS (
 
 finalized AS (
     SELECT 
-        -- All original fields
         {{ pk_fields | join(',\n        ') }},
-        valid_from,
+        LEAD(valid_from, 1, '9999-12-31'::timestamp) OVER (
+            PARTITION BY {{ pk_fields | join(', ') }} 
+            ORDER BY valid_from
+        ) as valid_to,
         {%- for field in attribute_fields %}
         {{ field }},
         {%- endfor %}
@@ -90,11 +96,7 @@ finalized AS (
         meta_changes_new as meta_changes,
         meta_datahash,
         meta_processed_at,
-        -- Calculate valid_to
-        LEAD(valid_from, 1, '9999-12-31'::timestamp) OVER (
-            PARTITION BY {{ pk_fields | join(', ') }} 
-            ORDER BY valid_from
-        ) as valid_to
+
     FROM compared
 )
 

@@ -116,7 +116,8 @@
     {%- endif -%}
   {%- endif -%}
   
-  {# Determine delta_to #}
+  {# Determine delta_to and handle missing upstreams #}
+  {%- set no_upstream_override = false -%}
   {%- if is_src_table -%}
     {# SRC tables: use delta_limit or max future date #}
     {%- set delta_limit = model_configs.configs._delta_limit -%}
@@ -133,11 +134,22 @@
     {# Non-SRC tables: use minimum upstream effective_to #}
     {%- set upstream_names = model_meta.upstream_states.table_names -%}
     {%- set upstream_times = model_meta.upstream_states.effective_times -%}
-    {%- if upstream_times and upstream_times | length > 0 -%}
+    
+    {# Check if upstream data is valid - handle both empty arrays and malformed data #}
+    {%- set has_valid_upstreams = false -%}
+    {%- if upstream_names is sequence and upstream_times is sequence and upstream_names|length > 0 -%}
+      {%- for name in upstream_names -%}
+        {%- if name and name != '' -%}
+          {%- set has_valid_upstreams = true -%}
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
+    
+    {%- if has_valid_upstreams -%}
       {# Log upstream tables for visibility #}
       {{ log("  Upstream tables:", info=true) }}
       {%- for i in range(upstream_names|length) -%}
-        {%- if upstream_names[i] -%}
+        {%- if upstream_names[i] and upstream_names[i] != '' -%}
           {{ log("    " ~ upstream_names[i] ~ ": " ~ upstream_times[i], info=true) }}
         {%- endif -%}
       {%- endfor -%}
@@ -151,34 +163,40 @@
       {%- endfor -%}
       
       {%- if not min_upstream_time -%}
-        {{ log("  No upstream tables have progressed. Skipping.", info=true) }}
-        {{ return("SET oef_should_process = FALSE;") }}
-      {%- endif -%}
-      
-      {# Apply delta_limit if configured #}
-      {%- set delta_limit = model_configs.configs._delta_limit -%}
-      {%- if delta_limit -%}
-        {# Evaluate the DATEADD expression #}
-        {%- set limited_delta_to_query = "SELECT DATEADD('day', " ~ delta_limit ~ ", '" ~ delta_from ~ "'::timestamp)::varchar" -%}
-        {%- set limited_delta_to_result = run_query(limited_delta_to_query) -%}
-        {%- set limited_delta_to = limited_delta_to_result.rows[0][0] -%}
-        
-        {%- set compare_query = "SELECT '" ~ limited_delta_to ~ "'::timestamp < '" ~ min_upstream_time ~ "'::timestamp" -%}
-        {%- set compare_result = run_query(compare_query) -%}
-        {%- if compare_result.rows[0][0] -%}
-          {%- set delta_to = limited_delta_to -%}
-          {%- set is_backfilling = true -%}
+        {{ log("  WARNING: Upstream tables found but no valid timestamps. Using no-upstream override.", info=true) }}
+        {%- set no_upstream_override = true -%}
+      {%- else -%}
+        {# Apply delta_limit if configured #}
+        {%- set delta_limit = model_configs.configs._delta_limit -%}
+        {%- if delta_limit -%}
+          {# Evaluate the DATEADD expression #}
+          {%- set limited_delta_to_query = "SELECT DATEADD('day', " ~ delta_limit ~ ", '" ~ delta_from ~ "'::timestamp)::varchar" -%}
+          {%- set limited_delta_to_result = run_query(limited_delta_to_query) -%}
+          {%- set limited_delta_to = limited_delta_to_result.rows[0][0] -%}
+          
+          {%- set compare_query = "SELECT '" ~ limited_delta_to ~ "'::timestamp < '" ~ min_upstream_time ~ "'::timestamp" -%}
+          {%- set compare_result = run_query(compare_query) -%}
+          {%- if compare_result.rows[0][0] -%}
+            {%- set delta_to = limited_delta_to -%}
+            {%- set is_backfilling = true -%}
+          {%- else -%}
+            {%- set delta_to = min_upstream_time -%}
+            {%- set is_backfilling = false -%}
+          {%- endif -%}
         {%- else -%}
           {%- set delta_to = min_upstream_time -%}
           {%- set is_backfilling = false -%}
         {%- endif -%}
-      {%- else -%}
-        {%- set delta_to = min_upstream_time -%}
-        {%- set is_backfilling = false -%}
       {%- endif -%}
     {%- else -%}
-      {{ log("  No upstream dependencies found. Skipping.", info=true) }}
-      {{ return("SET oef_should_process = FALSE;") }}
+      {{ log("  WARNING: No trackable upstream dependencies found. Using no-upstream override.", info=true) }}
+      {%- set no_upstream_override = true -%}
+    {%- endif -%}
+    
+    {# Handle no upstream override case #}
+    {%- if no_upstream_override -%}
+      {%- set delta_to = '9999-12-31' -%}
+      {%- set is_backfilling = false -%}
     {%- endif -%}
   {%- endif -%}
   
@@ -231,8 +249,8 @@
      STEP 9: RETURN SET STATEMENT
      ======================================== #}
   {{ return("SET 
-  (oef_should_process, oef_delta_from, oef_delta_to, oef_delta_min, oef_backfilling) =
-  (TRUE, '" ~ delta_from ~ "', '" ~ delta_to ~ "', '" ~ data_min ~ "', " ~ is_backfilling ~ ");") }}
+  (oef_should_process, oef_delta_from, oef_delta_to, oef_delta_min, oef_backfilling, oef_no_upstream) =
+  (TRUE, '" ~ delta_from ~ "', '" ~ delta_to ~ "', '" ~ data_min ~ "', " ~ is_backfilling ~ ", " ~ no_upstream_override ~ ");") }}
 
 {%- endif -%}
 {% endmacro %}
