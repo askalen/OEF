@@ -1,7 +1,7 @@
 {% macro operation_reset_model(model_name=none, force=false) %}
 {%- if execute -%}
 
-  {%- set target_model = model_name or this.name -%}
+  {%- set target_model = model_name or model.name -%}
   
   {{ log("Resetting model: " ~ target_model, info=true) }}
   

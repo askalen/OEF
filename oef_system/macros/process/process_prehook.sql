@@ -23,7 +23,7 @@
      ======================================== #}
   {%- if model_configs.configs.get('_dev', false) -%}
     {{ log("► Dev mode enabled - resetting model", info=true) }}
-    {% set reset_result = operation_reset_model() %}
+    {% set reset_result = operation_reset_model(force = true) %}
     {%- if not reset_result -%}
       {{ log("    Reset failed, continuing with normal processing", info=true) }}
     {%- endif -%}

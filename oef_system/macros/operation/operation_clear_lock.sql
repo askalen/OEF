@@ -1,6 +1,6 @@
 {% macro operation_clear_lock(model_name=none, force=false) %}
 {%- if execute -%}
-  {%- set target_model = model_name or this.name -%}
+  {%- set target_model = model_name or model.name -%}
   
   {%- set unlock_query %}
     UPDATE meta.model 
