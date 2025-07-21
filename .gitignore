@@ -1,2 +1,4 @@
 ignore/*
 .vscode/claudesync.json
+oef_system/models/processing/extanl/
+oef_system/models/processing/extsrc/

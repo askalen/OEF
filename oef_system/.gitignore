@@ -2,3 +2,5 @@
 target/
 dbt_packages/
 logs/
+oef_system/models/processing/extanl/
+oef_system/models/processing/extsrc/
