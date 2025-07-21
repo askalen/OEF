@@ -1,7 +1,0 @@
-version: 2
-sources:
-  - name: extraw
-    database: oef
-    schema: extraw
-    tables:
-    - name: tcc_case_j
