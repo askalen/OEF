@@ -12,6 +12,7 @@ CREATE SCHEMA IF NOT EXISTS anl;
 CREATE SCHEMA IF NOT EXISTS extraw;
 CREATE SCHEMA IF NOT EXISTS extsrc;
 CREATE SCHEMA IF NOT EXISTS extanl;
+CREATE SCHEMA IF NOT EXISTS ref;
 
 CREATE SCHEMA IF NOT EXISTS dev;
 {%- endset %}
@@ -28,5 +29,6 @@ CREATE SCHEMA IF NOT EXISTS dev;
 {{ log("  EXTRAW", info=true) }}
 {{ log("  EXTSRC", info=true) }}
 {{ log("  EXTANL", info=true) }}
+{{ log("  REF", info=true) }}
 {{ log("  DEV", info=true) }}
 {% endmacro %}

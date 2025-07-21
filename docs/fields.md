@@ -133,6 +133,45 @@ When referencing objects through multiple relationship hops, concatenate the rel
 - `actions_last_set`
 - `purchases_recent_set`
 
+### Aggregate Field Naming
+
+Aggregate fields follow systematic naming patterns that clearly indicate what is being measured and over what time period.
+
+**Core Structure:** `{what_being_counted}_{qualifier}_{time_period}`
+
+**Pluralization Rules:**
+- **Count type:** Always plural to indicate aggregation
+  - `logins` not `login` (counting login events)
+  - `calls` not `call` (counting call events)
+  - `days_active` not `day_active` (counting unique days)
+  - `purchases` not `purchase` (counting purchase events)
+
+**Qualifier Patterns:**
+- **State qualifiers:** `active`, `successful`, `failed`, `pending`
+- **Type qualifiers:** `inbound`, `outbound`, `recurring`, `new`
+- **Business qualifiers:** `billable`, `support`, `sales`
+
+**Time Period Suffixes:**
+- `weekly`, `monthly`, `quarterly`, `yearly`
+- `l7`, `l30`, `l91` for custom rolling windows (last N days)
+
+**Examples:**
+- `user_logins_weekly` = total login events in past week
+- `employee_calls_successful_monthly` = successful calls in past month
+- `customer_purchases_recurring_quarterly` = recurring purchases in past quarter
+- `user_activity_days_active_l30` = unique active days in last 30 days
+
+### Activity Metrics in JSON
+
+Activity metrics can be organized into JSON objects for related measures:
+
+**Structure:** `activity.{metric}.{period}`
+
+**Examples:**
+- `activity.days_active.weekly` = unique days with any activity in the past week
+- `activity.logins.monthly` = total login events in the past month
+- `activity.calls_successful.quarterly` = successful calls in the past quarter
+
 ## Data Type Principles
 
 ### Avoid Data Type Encoding
@@ -202,24 +241,6 @@ Related fields should be grouped into JSON objects to enable efficient processin
 - `activity.logins.weekly`
 
 **Field count threshold:** If a JSON object would contain more than 4 elements, consider if there's a better data representation.
-
-### Activity Metrics Pattern
-
-Activity metrics follow a specific naming convention within JSON:
-
-**Structure:** `activity.{metric}.{period}`
-
-**Metric naming:** `{count_type}_{filter}`
-- **Count type:** Plural indicates what's being counted
-  - `days_*` = counting unique days
-  - `logins` = counting individual events
-- **Filter:** The qualifying condition (`active`, `edited`, etc.)
-- **Period:** Temporal window (`weekly`, `monthly`, `yearly`)
-
-**Examples:**
-- `activity.days_active.weekly` = unique days with any activity in the past week
-- `activity.logins.monthly` = total login events in the past month
-- `activity.days_edited.quarterly` = unique days with editing activity in the past quarter
 
 ### Rolling Windows
 
