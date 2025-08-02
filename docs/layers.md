@@ -36,38 +36,20 @@ Data processing layers from raw to analytics-ready. The OEF uses six schemas org
 **Processing Order:** R tables are built first to establish source-to-business object mappings, then used by O tables for overrides, then H and E tables use both for business object alignment.
 
 ### R Tables
-**Purpose:** Registry tables that map key source identifiers to business object identifiers. Each business object type has exactly one "key source" that maintains 1:1 cardinality and drives business object creation.
-
-**Structure:**
-- **key_source_id:** The authoritative identifier from the key source (e.g., email address, DUNS number)
-- **business_object_id:** Generated business object identifier (e.g., entity-person.com-us.35F261H)
-- **assignment_rank:** Sequential tracking for ID generation process
-- **Meta fields:** Standard audit fields
-
-**Key Source Rules:**
-- New key source ID = new business object ID
-- One key source per business object type
-- Non-key sources resolve to existing business objects through mapping logic
-
-**Layer Restriction:** R tables only exist in the VLTX layer
+**Purpose:** Registry tables that map key source identifiers to business object identifiers.
+**Layer-specific:** Only exist in VLTX layer - built first to establish mappings used by H and E tables.
 
 ### O Tables
-**Purpose:** Override tables that provide manual configuration for special processing requirements. Can be applied at any layer to add meta fields or flags that influence processing logic.
-
-**Key Use Case in VLTX:** Add `meta_is_primary` field to specific source objects, which takes priority over other source objects mapping to the same business object ID during record selection.
-
-**General Purpose:** O tables sourced from CSV seeds can add or override fields at any processing layer where special handling is needed.
+**Purpose:** Override tables that provide manual configuration for special processing requirements.
+**Layer-specific:** Add `meta_is_primary` field to specific source objects, which takes priority during VLTX record selection.
 
 ### H Tables
-**Purpose:** Business object attributes per source system, with one representative record per business object. Uses registry mappings to transform source identifiers and applies override logic for record selection.
-
-**Record Selection Rules:**
-1. Primary flag: If any record has `meta_is_primary=true` from override, use that record
-2. Most recent: Otherwise, use the record with the latest timestamp
-3. Group entities: Set all dimensional attributes to NULL per override configuration
+**Purpose:** Business object attributes per source system, with one representative record per business object.
+**Layer-specific:** Uses registry mappings to transform source identifiers and applies override logic for record selection.
 
 ### E Tables
-**Purpose:** Business events per source system, normalized using business object identifiers from R tables
+**Purpose:** Business events per source system.
+**Layer-specific:** Normalized using business object identifiers from R tables.
 
 ## VLT - Vault Layer
 
@@ -80,38 +62,43 @@ Data processing layers from raw to analytics-ready. The OEF uses six schemas org
 - Clean separation between source deduplication and cross-source consolidation
 
 ### H Tables
-**Purpose:** Consolidated business object attributes across all source systems using business rules for field selection
-
-**Consolidation Logic:** Uses COALESCE and business rules to select the best value for each field across multiple source systems.
+**Purpose:** Consolidated business object attributes across all source systems.
+**Layer-specific:** Uses COALESCE and business rules to select the best value for each field across multiple source systems.
 
 ### E Tables
-**Purpose:** Consolidated business events across all source systems
+**Purpose:** Consolidated business events across all source systems.
 
 ## WHX - Warehouse Transformation Layer
 
 **Purpose:** Denormalizes business objects from the VLT layer to prepare for metric aggregation. Combines related business objects and events into wide tables optimized for analytical processing and aggregation in the WH layer.
 
 ### H Tables
-**Purpose:** Denormalized business object attributes with related dimensional context for aggregation preparation
+**Purpose:** Denormalized business object attributes with related dimensional context.
+**Layer-specific:** Prepares data for aggregation in the WH layer.
 
 ### E Tables
-**Purpose:** Denormalized business events with full dimensional context for aggregation and analysis
+**Purpose:** Denormalized business events with full dimensional context.
+**Layer-specific:** Optimized for aggregation and analysis in the WH layer.
 
 ## WH - Warehouse Layer
 
 **Purpose:** Creates the final analytical tables with aggregated metrics and comprehensive dimensional information. Combines denormalized data from WHX with calculated measures to produce complete, analytics-ready tables.
 
 ### HX Tables
-**Purpose:** Period-based dimensional data that checks for changes less frequently than standard H tables (e.g., weekly checks instead of every change). Essential for tables that would change too frequently if tracked at every modification.
+**Purpose:** Period-based dimensional data.
+**Layer-specific:** Checks for changes less frequently than standard H tables (e.g., weekly checks instead of every change). Essential for tables that would change too frequently if tracked at every modification.
 
 ### AX Tables
-**Purpose:** Aggregated metrics and counts organized by time periods, blended with dimensional information
+**Purpose:** Aggregated metrics and counts organized by time periods.
+**Layer-specific:** Blended with dimensional information from WHX layer.
 
 ### H Tables
-**Purpose:** Denormalized business objects with embedded aggregate metrics for comprehensive analysis
+**Purpose:** Denormalized business objects with embedded aggregate metrics.
+**Layer-specific:** Final analytical tables with comprehensive metrics for analysis.
 
 ### E Tables
-**Purpose:** Denormalized events with contextual metrics and dimensional data
+**Purpose:** Denormalized events with contextual metrics and dimensional data.
+**Layer-specific:** Event data enriched with calculated measures and context.
 
 ## MART - Mart Layer
 

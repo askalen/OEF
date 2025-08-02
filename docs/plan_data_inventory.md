@@ -201,6 +201,33 @@ Before finalizing each YML file:
 - **H table:** `product_id` (pk), `name`, `category`, `price`, `last_updated` (data_time)
 - **E table:** `product_id`, `view_date` (data_time), `viewed_by`, `source_page`
 
+## Implementation Flow
+
+These YML files become the foundation for the entire data warehouse build process:
+
+### Source Layer (SRC)
+YML files drive the creation of standardized source tables:
+- `salesforce_account_h` - Historical account attributes from Salesforce
+- `salesforce_account_e` - Account activity events from Salesforce
+- `hubspot_contact_h` - Historical contact attributes from HubSpot
+
+### Vault Transformation (VLTX)
+Source tables feed into business object mapping:
+- Registry tables (`entity_r`, `user_r`) map source IDs to business object IDs
+- Override tables (`salesforce_account_o`) provide manual configuration
+- Transformed tables (`entity_organization_salesforce_h`) align to business objects
+
+### Vault Layer (VLT)
+Multiple sources consolidate into authoritative business objects:
+- `entity_organization_h` - Consolidated organization data across all sources
+- `user_h` - Consolidated user data with best-value selection logic
+
+### Warehouse Layers (WHX, WH)
+Business objects become analytics-ready tables:
+- Denormalized structures with related dimensional context
+- Embedded metrics and aggregations for analysis
+- Optimized for consumption by business teams
+
 ## Getting Help
 
 **If you're unsure about:**

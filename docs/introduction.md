@@ -40,7 +40,7 @@ Raw data in any columnar format with business object attributes and timestamps. 
 ### End Result
 Two clean, purpose-built databases:
 
-**Processing Database:** Standardized transformation layers (Ingestion → Data Vault → Business Vault → Fact → Output) with automated processing, cursor tracking, and rollback capabilities.
+**Processing Database:** Standardized transformation layers organized into three conceptual layers (Source, Vault, Warehouse) with automated processing, cursor tracking, and rollback capabilities.
 
 **Reporting Database:** Flexible data marts organized by business function, optimized for consumption rather than processing efficiency.
 
@@ -48,7 +48,7 @@ Two clean, purpose-built databases:
 Templates and macros handle the heavy lifting. Engineers focus on business logic rather than infrastructure code:
 
 ```sql
--- Ingestion layer - this (plus a documented data source) is literally all you write:
+-- Source layer - this (plus a documented data source) is literally all you write:
 {{ config(
   _initial_date = '2020-01-01',
   _delta_limit = 20
@@ -57,7 +57,7 @@ Templates and macros handle the heavy lifting. Engineers focus on business logic
 ```
 
 ```sql
--- Business Vault layer - simple business logic:
+-- Vault layer - simple business logic:
 {{ config(unique_key = ['user_id', 'valid_from']) }}
 
 SELECT
@@ -66,7 +66,7 @@ SELECT
   name_first,
   name_last,
   is_active
-FROM {{ ref('dv_customer_h') }}
+FROM {{ ref('salesforce_customer_h') }}
 ```
 
 The framework generates all SCD Type 2 logic, change detection, clustering, incremental processing, metadata tracking, and rollback capabilities automatically.
@@ -104,12 +104,12 @@ Install the OEF dbt package, run our scaffold script to set up your repository s
 
 ### Phase 3: Layer-by-Layer Development (16-40 weeks)
 Build your warehouse systematically using our templates:
-1. **Ingestion Layer:** Standardize raw data into OEF structures
-2. **Data Vault:** Normalize around source objects  
-3. **Business Vault:** Normalize around business objects
-4. **Fact Layer:** Denormalize for aggregation
-5. **Output Layer:** Create official metrics and dimensions
-6. **Mart Layer:** Build consumption-optimized tables
+1. **Source Layer (SRC):** Standardize raw data into OEF structures
+2. **Vault Transformation (VLTX):** Create business object mappings and source-specific representations
+3. **Vault Layer (VLT):** Consolidate across sources into authoritative business objects
+4. **Warehouse Transformation (WHX):** Denormalize for analytical processing
+5. **Warehouse Layer (WH):** Add aggregated metrics to create final analytical tables
+6. **Mart Layer (MART):** Build consumption-optimized tables
 
 ### Phase 4: Data Marts (Ongoing)
 Deploy flexible, use-case-specific tables optimized for your business teams and applications.
@@ -137,7 +137,7 @@ Deploy flexible, use-case-specific tables optimized for your business teams and 
 ## Getting Started
 
 1. **Evaluate Fit:** Review our [design principles](principles.md) and [table types](table-types.md) to confirm alignment with your needs
-2. **Plan Your Objects:** Use our [design methodology](design.md) to map out your business objects and relationships
+2. **Plan Your Objects:** Use our [design methodology](plan_business_objects.md) to map out your business objects and relationships
 3. **Install the Package:** Follow our setup guide to deploy the framework in your environment
 4. **Build Your First Table:** Start with a simple historical table using our templates
 

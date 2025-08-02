@@ -178,4 +178,29 @@ The following configurations are set automatically by the OEF framework in `dbt_
 - `post-hook` - Framework metadata management
 - Database and schema assignments
 
+**Layer-Specific Configurations:**
+
+### SRC Layer
+- **H tables:** Merge strategy with clustering on `date(valid_to)`, incremental predicates for current records
+- **E tables:** Insert strategy with clustering on `date(event_time)`
+
+### VLTX Layer
+- **R tables:** Full refresh strategy (registries rebuilt each run)
+- **H tables:** Merge strategy optimized for business object processing
+- **E tables:** Insert strategy with business object clustering
+
+### VLT Layer
+- **H tables:** Merge strategy with cross-source consolidation optimization
+- **E tables:** Insert strategy with consolidated event processing
+
+### WHX Layer
+- **H tables:** Merge strategy optimized for denormalization
+- **E tables:** Insert strategy with dimensional context
+
+### WH Layer
+- **H tables:** Merge strategy with embedded metrics
+- **E tables:** Insert strategy with enriched dimensional data
+- **AX tables:** Merge strategy with period-based clustering
+- **HX tables:** Merge strategy with period-based change detection
+
 **Important:** Do not override these configurations in your model config blocks. They are carefully designed to work with the OEF processing framework and changing them may cause data integrity issues or processing failures.

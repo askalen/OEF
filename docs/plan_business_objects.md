@@ -195,8 +195,8 @@ Direct relationships get their own normalized tables. Indirect relationships onl
 - `EMPLOYEE -->|manager| EMPLOYEE` means "Employee is the manager of Employee"
 
 **Primary Object Rule:** The target of the arrow (downstream) becomes the primary object in table naming
-- `USER -->|owner| ASSET` creates table **ASSET_OWNER**
-- `USER -->|accessor| ASSET` creates table **ASSET_ACCESS**
+- `USER -->|owner| ASSET` creates table **asset_owner_h**
+- `USER -->|accessor| ASSET` creates table **asset_access_h**
 
 ### Step 3: Create the DAG
 
@@ -279,33 +279,53 @@ Your completed DAG should:
 
 Each edge in the DAG translates directly to a relationship table:
 
-- `USER -->|owner| ASSET` → **ASSET_OWNER** table
-- `USER -->|accessor| ASSET` → **ASSET_ACCESS** table  
-- `EMPLOYEE -->|manager| EMPLOYEE` → **EMPLOYEE_MANAGER** table
+- `USER -->|owner| ASSET` → **asset_owner_h** table
+- `USER -->|accessor| ASSET` → **asset_access_h** table  
+- `EMPLOYEE -->|manager| EMPLOYEE` → **employee_manager_h** table
 
 **Table Structure:**
 ```sql
--- ASSET_OWNER
+-- asset_owner_h
 asset_id (PK)
 user_id (PK) 
+valid_from (PK)
+valid_to
 -- relationship attributes
+-- standard meta fields
 
--- ASSET_ACCESS  
+-- asset_access_h
 asset_id (PK)
 user_id (PK)
+valid_from (PK)
+valid_to
 permissions
 -- other relationship attributes
+-- standard meta fields
 ```
 
 ### Processing Dependencies
 
 The DAG determines build order - objects higher in the hierarchy must be built before objects that depend on them:
 
-1. ENTITY (no dependencies)
-2. USER, EMPLOYEE, ACCOUNT (depend on ENTITY)
-3. AGREEMENT (depends on ACCOUNT)  
-4. PRODUCT (depends on AGREEMENT)
-5. ASSET (depends on USER and PRODUCT)
+1. **Source Layer (SRC):** Build all source tables first
+2. **Vault Transformation (VLTX):** 
+   - ENTITY (no dependencies on other business objects)
+   - USER, EMPLOYEE, ACCOUNT (depend on ENTITY registry)
+   - AGREEMENT (depends on ACCOUNT registry)  
+   - PRODUCT (depends on AGREEMENT registry)
+   - ASSET (depends on USER and PRODUCT registries)
+3. **Vault Layer (VLT):** Consolidate across sources using VLTX dependencies
+4. **Warehouse Layers (WHX, WH):** Denormalize and add metrics following vault dependencies
+
+### Registry Table Strategy
+
+Each business object gets a registry table in VLTX that maps key source identifiers to business object IDs:
+
+- `entity_r` - Maps key source (email, DUNS) to entity business IDs
+- `user_r` - Maps key source (employee ID) to user business IDs  
+- `account_r` - Maps key source (CRM account ID) to account business IDs
+
+**Key Source Selection:** Choose the source with 1:1 cardinality and best data quality as the authoritative identifier for each business object type.
 
 ### Cross-Type Analytics
 
@@ -327,6 +347,7 @@ The unified approach enables powerful cross-type analysis:
 - [ ] Object-to-object mappings complete
 - [ ] Field transformation logic specified
 - [ ] Data quality issues identified
+- [ ] Key source selection documented
 
 ### Relationship DAG ✓
 - [ ] All business objects included as nodes
@@ -342,6 +363,7 @@ The unified approach enables powerful cross-type analysis:
 - [ ] Object definitions support planned use cases
 - [ ] Table naming conventions are consistent
 - [ ] Processing dependencies are clear
+- [ ] Registry strategy documented
 
 ## Next Steps
 
