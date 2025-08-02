@@ -47,6 +47,7 @@ Instructions for subject matter experts to document source systems:
 Standard table structures and when to use each:
 - [H - Historical Tables](docs/table-types.md#h---historical-tables)
 - [R - Registry Tables](docs/table-types.md#r---registry-tables)
+- [O - Override Tables](docs/table-types.md#o---override-tables)
 - [E - Event Tables](docs/table-types.md#e---event-tables)
 - [AX - Aggregate Tables](docs/table-types.md#ax---aggregate-tables)
 - [SX - Periodic Snapshots](docs/table-types.md#sx---periodic-snapshots)
@@ -55,11 +56,11 @@ Standard table structures and when to use each:
 
 ### [Layers](docs/layers.md)
 Data processing layers from raw to analytics-ready:
-- [IN - Ingestion Layer](docs/layers.md#in---ingestion-layer)
-- [DV - Data Vault](docs/layers.md#dv---data-vault)
-- [BV - Business Vault](docs/layers.md#bv---business-vault)
-- [FCT - Fact Layer](docs/layers.md#fct---fact-layer)
-- [OUT - Output Layer](docs/layers.md#out---output-layer)
+- [SRC - Source Layer](docs/layers.md#src---source-layer)
+- [VLTX - Vault Transformation](docs/layers.md#vltx---vault-transformation-layer)
+- [VLT - Vault Layer](docs/layers.md#vlt---vault-layer)
+- [WHX - Warehouse Transformation](docs/layers.md#whx---warehouse-transformation-layer)
+- [WH - Warehouse Layer](docs/layers.md#wh---warehouse-layer)
 - [MART - Mart Layer](docs/layers.md#mart---mart-layer)
 
 ### [Configurations](docs/configurations.md)
