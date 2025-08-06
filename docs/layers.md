@@ -112,16 +112,16 @@ Raw data storage from various source systems. The OEF framework assumes you have
 **Processing Order:** R tables are built first to establish source-to-business object mappings, then used by O tables for overrides, then H and E tables use both for business object alignment.
 
 ### R Tables
-**Purpose:** Registry tables that map key source identifiers to business object identifiers.
-**Layer-specific:** Only exist in VLTX layer - built first to establish mappings used by H and E tables.
+**Purpose:** Registry tables that map key source identifiers to business object identifiers. Built first in VLTX to establish business object mappings, then used by both VLTX H/E tables and as the foundation for VLT consolidation.
+**Layer-specific:** Only exist in VLTX layer but are used by VLT as the "starting table" for cross-source joins.
 
 ### O Tables
 **Purpose:** Override tables that provide manual configuration for special processing requirements.
 **Layer-specific:** Add `meta_is_primary` field to specific source objects, which takes priority during VLTX record selection.
 
 ### H Tables
-**Purpose:** Business object attributes per source system, with one representative record per business object.
-**Layer-specific:** Uses registry mappings to transform source identifiers and applies override logic for record selection.
+**Purpose:** Business object attributes per source system, with one representative record per business object from that source.
+**Layer-specific:** Uses registry mappings to transform source identifiers and applies override logic for record selection. Creates source-level business object alignment that VLT can then consolidate.
 
 ### E Tables
 **Purpose:** Business events per source system.
@@ -129,7 +129,7 @@ Raw data storage from various source systems. The OEF framework assumes you have
 
 ## VLT - Vault Layer
 
-**Purpose:** Creates the authoritative, consolidated business object definitions by aggregating across source systems. Combines data from multiple VLTX source tables using field-by-field business rules to produce the single source of truth for each business object.
+**Purpose:** Creates the authoritative, consolidated business object definitions by aggregating across source systems. Uses VLTX registry tables as the foundation and left joins each source's VLTX tables to combine data using field-by-field business rules.
 
 **Key Characteristics:**
 - Bounded complexity: Scales with number of sources (2-5), not number of records
@@ -139,18 +139,18 @@ Raw data storage from various source systems. The OEF framework assumes you have
 
 ### H Tables
 **Purpose:** Consolidated business object attributes across all source systems.
-**Layer-specific:** Uses COALESCE and business rules to select the best value for each field across multiple source systems.
+**Layer-specific:** Starts with VLTX registry tables and left joins each source's VLTX H table, using COALESCE and business rules to select the best value for each field across sources.
 
 ### E Tables
 **Purpose:** Consolidated business events across all source systems.
 
 ## WHX - Warehouse Transformation Layer
 
-**Purpose:** Denormalizes business objects from the VLT layer to prepare for metric aggregation. Combines related business objects and events into wide tables optimized for analytical processing and aggregation in the WH layer.
+**Purpose:** Denormalizes business objects from the VLT layer to prepare for metric aggregation. Brings dimensional attributes "down" from higher-level objects so they can be aggregated "up" in the WH layer. For example, brings Account attributes down to the User level so users can be aggregated up to Plan level with "users in owned accounts" metrics.
 
 ### H Tables
-**Purpose:** Denormalized business object attributes with related dimensional context.
-**Layer-specific:** Prepares data for aggregation in the WH layer.
+**Purpose:** Denormalized business object attributes with dimensional context from related objects.
+**Layer-specific:** Brings attributes "down" from higher objects (e.g., Account attributes onto User records) to enable aggregation "up" to higher levels with rich dimensional context.
 
 ### E Tables
 **Purpose:** Denormalized business events with full dimensional context.
