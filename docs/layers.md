@@ -1,10 +1,10 @@
 # Data Warehouse Layers
 
-Data processing layers from raw to analytics-ready. Each layer has a specific purpose in transforming source data into standardized business-ready analytics tables.
+Data processing layers from raw to analytics-ready. The OEF uses six schemas organized into three conceptual layers, each with a specific purpose in transforming source data into standardized business-ready analytics tables.
 
 ## Layer Overview
 
-The Object Evolution Framework transforms raw data through five distinct layers, like preparing a meal from shopping to serving:
+The Object Evolution Framework transforms data lake data through four distinct transformation layers, like preparing a meal from shopping to serving:
 
 <table>
 <tr>
@@ -36,7 +36,7 @@ Standardizes raw data into consistent OEF table structures without applying busi
 <img src="images/counter.png" alt="Vault Layer" width="100%">
 </td>
 <td>
-<h3><a href="#bv---business-vault">Vault Layer</a></h3>
+<h3><a href="#vlt---vault-layer">Vault Layer</a></h3>
 <strong>Business Object Alignment</strong><br>
 <em>"Measuring & prepping for recipe"</em><br><br>
 Aligns source data around business objects and relationships. Like mise en place - every ingredient is measured, prepped, and organized; all laid out and ready to be combined as needed.
@@ -48,7 +48,7 @@ Aligns source data around business objects and relationships. Like mise en place
 <img src="images/cake.png" alt="Warehouse Layer" width="100%">
 </td>
 <td>
-<h3><a href="#fct---fact-layer">Warehouse Layer</a></h3>
+<h3><a href="#wh---warehouse-layer">Warehouse Layer</a></h3>
 <strong>Denormalization & Aggregation</strong><br>
 <em>"Combining & cooking"</em><br><br>
 Combines prepared data into metric-rich, denormalized tables optimized for analytics. Like the actual cooking process - ingredients are transformed and combined following your recipe to create the finished product.
@@ -99,83 +99,82 @@ Raw data storage from various source systems. The OEF framework assumes you have
 
 ### H Tables
 **Purpose:** Track source object attribute changes in SCD Type 2 format, focusing only on actual changes  
-**Configs:** See [H - Historical Tables](table-types.md#h---historical-tables) for standard configurations
+**Configs:** See H - Historical Tables for standard configurations
 
 ### E Tables
 **Purpose:** Capture source system events and fast-changing attributes that were split from object tables  
-**Configs:** See [E - Event Tables](table-types.md#e---event-tables) for standard configurations
+**Configs:** See E - Event Tables for standard configurations
 
----
+## VLTX - Vault Transformation Layer
 
-## EXTSRC - External Source Layer
+**Purpose:** Creates business object mappings and produces one representative record per business object per source system. Handles the transformation from source-oriented data to business-object-oriented data while maintaining source-level precision.
 
-**Purpose:** Houses ingested data sources that are *not* part of the main ecosystem. This keeps them separate from the primary data ingestion pipeline while still allowing them to be integrated downstream if needed. Data here might be less structured initially and require more specific transformations before joining the main data flow.
-
-**Key Considerations:**
-- May have different ingestion patterns or frequencies
-- Less strict adherence to OEF standards initially
-- Requires clear metadata to distinguish from core sources
-
----
-
-## DV - Data Vault
-
-**Purpose:** Normalizes historical tables around source objects and relationships. Serves as an intermediate step before business object normalization, maintaining source system perspective while preparing for business vault transformation.
-
-### H Tables
-**Purpose:** Source object and relationship normalization without business logic transformation  
-**Configs:** See [H - Historical Tables](table-types.md#h---historical-tables) for standard configurations
-
----
-
-## BV - Business Vault
-
-**Purpose:** Normalizes data around business objects and relationships. Creates authoritative mapping from source objects to business objects and maintains complete business object histories and events.
-
-**Processing Order:** R tables are built first to establish source-to-business object mappings, then used to align source objects into business objects for H and E tables.
+**Processing Order:** R tables are built first to establish source-to-business object mappings, then used by O tables for overrides, then H and E tables use both for business object alignment.
 
 ### R Tables
-**Purpose:** Registry tables that map source system objects to business objects over time and define business object existence  
-**Configs:** See [R - Registry Tables](table-types.md#r---registry-tables) for standard configurations  
-**Layer Restriction:** R tables only exist in the BV layer
+**Purpose:** Registry tables that map key source identifiers to business object identifiers.
+**Layer-specific:** Only exist in VLTX layer - built first to establish mappings used by H and E tables.
+
+### O Tables
+**Purpose:** Override tables that provide manual configuration for special processing requirements.
+**Layer-specific:** Add `meta_is_primary` field to specific source objects, which takes priority during VLTX record selection.
 
 ### H Tables
-**Purpose:** Business object attribute changes over time, normalized using R table mappings  
-**Configs:** See [H - Historical Tables](table-types.md#h---historical-tables) for standard configurations
+**Purpose:** Business object attributes per source system, with one representative record per business object.
+**Layer-specific:** Uses registry mappings to transform source identifiers and applies override logic for record selection.
 
 ### E Tables
-**Purpose:** Business events normalized using business object identifiers from R tables  
-**Configs:** See [E - Event Tables](table-types.md#e---event-tables) for standard configurations
+**Purpose:** Business events per source system.
+**Layer-specific:** Normalized using business object identifiers from R tables.
 
----
+## VLT - Vault Layer
 
-## FCT - Fact Layer
+**Purpose:** Creates the authoritative, consolidated business object definitions by aggregating across source systems. Combines data from multiple VLTX source tables using field-by-field business rules to produce the single source of truth for each business object.
 
-**Purpose:** Denormalizes business objects from the BV layer to prepare for aggregation. Combines related business objects and events into wide tables optimized for analytical processing and aggregation in the ANL layer.
+**Key Characteristics:**
+- Bounded complexity: Scales with number of sources (2-5), not number of records
+- Field-by-field consolidation using business rules
+- Preserves exact timestamps from source-level changes
+- Clean separation between source deduplication and cross-source consolidation
 
 ### H Tables
-**Purpose:** Denormalized business object attributes with related dimensional context for aggregation preparation  
-**Configs:** See [H - Historical Tables](table-types.md#h---historical-tables) for standard configurations
+**Purpose:** Consolidated business object attributes across all source systems.
+**Layer-specific:** Uses COALESCE and business rules to select the best value for each field across multiple source systems.
 
 ### E Tables
-**Purpose:** Denormalized business events with full dimensional context for aggregation and analysis  
-**Configs:** See [E - Event Tables](table-types.md#e---event-tables) for standard configurations
+**Purpose:** Consolidated business events across all source systems.
 
----
+## WHX - Warehouse Transformation Layer
 
-## ANL - Analytics Layer
+**Purpose:** Denormalizes business objects from the VLT layer to prepare for metric aggregation. Combines related business objects and events into wide tables optimized for analytical processing and aggregation in the WH layer.
 
-**Purpose:** Creates official aggregated metrics and period-based dimensional data. Combines aggregated measures with dimensional information from the FCT layer to produce comprehensive, authoritative analytical tables.
+### H Tables
+**Purpose:** Denormalized business object attributes with related dimensional context.
+**Layer-specific:** Prepares data for aggregation in the WH layer.
+
+### E Tables
+**Purpose:** Denormalized business events with full dimensional context.
+**Layer-specific:** Optimized for aggregation and analysis in the WH layer.
+
+## WH - Warehouse Layer
+
+**Purpose:** Creates the final analytical tables with aggregated metrics and comprehensive dimensional information. Combines denormalized data from WHX with calculated measures to produce complete, analytics-ready tables.
 
 ### HX Tables
-**Purpose:** Period-based dimensional data that checks for changes less frequently than standard H tables (e.g., weekly checks instead of every change). Essential for tables that would change too frequently if tracked at every modification.  
-**Configs:** See [H - Historical Tables](table-types.md#h---historical-tables) for standard configurations (time period variants)
+**Purpose:** Period-based dimensional data.
+**Layer-specific:** Checks for changes less frequently than standard H tables (e.g., weekly checks instead of every change). Essential for tables that would change too frequently if tracked at every modification.
 
 ### AX Tables
-**Purpose:** Official aggregated metrics and counts organized by time periods, blended with dimensional information  
-**Configs:** See [A - Aggregate Tables](table-types.md#ax---aggregate-tables) for standard configurations
+**Purpose:** Aggregated metrics and counts organized by time periods.
+**Layer-specific:** Blended with dimensional information from WHX layer.
 
----
+### H Tables
+**Purpose:** Denormalized business objects with embedded aggregate metrics.
+**Layer-specific:** Final analytical tables with comprehensive metrics for analysis.
+
+### E Tables
+**Purpose:** Denormalized events with contextual metrics and dimensional data.
+**Layer-specific:** Event data enriched with calculated measures and context.
 
 ## MART - Mart Layer
 
@@ -196,11 +195,24 @@ Raw data storage from various source systems. The OEF framework assumes you have
 - Structure optimized for consumption rather than processing efficiency
 - Team-specific requirements take precedence over framework standards
 
----
+## Supporting Schemas
 
-## EXTANL - External Analytics Layer
+### META
+**Purpose:** Framework metadata tables for processing control, cursor tracking, and audit information.
 
-**Purpose:** Analytics tables that are *outside* of your core data warehouse ecosystem. These might be highly specialized datasets, data science models, or temporary tables for ad-hoc analysis that don't need to conform to the strict structure of the ANL or MART layers.
+### REF
+**Purpose:** Stable reference tables like dates, regions, and other dimensional data that doesn't fit the business object model.
+
+### EXTSRC
+**Purpose:** External source data that is not part of the main ecosystem. Keeps separate data sources isolated while allowing downstream integration.
+
+**Key Considerations:**
+- May have different ingestion patterns or frequencies
+- Less strict adherence to OEF standards initially
+- Requires clear metadata to distinguish from core sources
+
+### EXTWH
+**Purpose:** External warehouse tables outside the core data warehouse ecosystem. Highly specialized datasets, data science models, or temporary tables for ad-hoc analysis.
 
 **Key Considerations:**
 - Often less governed, allowing for rapid experimentation
